@@ -134,6 +134,69 @@ const AddIncomeScreen = () => {
                 />
                 <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-gray-500">VNĐ</span>
               </div>
+              
+              {/* Gợi ý số tiền nhanh */}
+              <div className="mt-2">
+                <p className="text-xs text-gray-500 mb-2">Chọn nhanh:</p>
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '10000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    10k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '50000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    50k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '100000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    100k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '200000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    200k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '500000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    500k
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '1000000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    1tr
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '5000000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    5tr
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: '10000000' }))}
+                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                  >
+                    10tr
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
