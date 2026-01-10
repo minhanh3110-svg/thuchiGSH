@@ -51,7 +51,14 @@ export default function LoginScreen() {
         localStorage.setItem('username', email);
         localStorage.setItem('authMode', 'firebase');
         localStorage.setItem('firebaseUid', result.user.uid);
-        navigate('/');
+        
+        // Dispatch custom event to trigger Firebase sync setup
+        window.dispatchEvent(new CustomEvent('firebase-login'));
+        
+        // Small delay to ensure event is processed
+        setTimeout(() => {
+          navigate('/');
+        }, 100);
       } else {
         setError(result.error || 'Đã có lỗi xảy ra!');
       }

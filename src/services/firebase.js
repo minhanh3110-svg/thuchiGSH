@@ -130,21 +130,31 @@ export const listenToTransactions = (callback) => {
       return null;
     }
 
-    console.log('👂 [Firebase Listener] Setting up realtime listener for user:', user.email);
+    console.log('👂 [Firebase Listener] Setting up realtime listener for user:', user.email, 'UID:', user.uid);
     const transactionsRef = collection(db, `users/${user.uid}/transactions`);
     const q = query(transactionsRef, orderBy('date', 'desc'));
     
-    return onSnapshot(q, (snapshot) => {
-      console.log('📡 [Firebase Listener] Snapshot received! Docs count:', snapshot.size);
-      const transactions = [];
-      snapshot.forEach((doc) => {
-        transactions.push({ id: doc.id, ...doc.data() });
-      });
-      console.log('📦 [Firebase Listener] Calling callback with', transactions.length, 'transactions');
-      callback(transactions);
-    }, (error) => {
-      console.error('❌ [Firebase Listener] Error:', error);
-    });
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        console.log('📡 [Firebase Listener] Snapshot received! Docs count:', snapshot.size);
+        const transactions = [];
+        snapshot.forEach((doc) => {
+          transactions.push({ id: doc.id, ...doc.data() });
+        });
+        console.log('📦 [Firebase Listener] Calling callback with', transactions.length, 'transactions');
+        callback(transactions);
+      }, 
+      (error) => {
+        console.error('❌ [Firebase Listener] Error:', error);
+        // Retry on error
+        if (error.code === 'permission-denied') {
+          console.error('🚫 [Firebase Listener] Permission denied - check Firebase Security Rules!');
+        }
+      }
+    );
+    
+    console.log('✅ [Firebase Listener] Listener setup complete');
+    return unsubscribe;
   } catch (error) {
     console.error('❌ [Firebase Listener] Setup error:', error);
     return null;

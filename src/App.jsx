@@ -28,36 +28,80 @@ function App() {
     // Initialize storage on app load
     initStorage();
 
-    // Load Firebase data if using Firebase auth
-    const authMode = localStorage.getItem('authMode');
     let unsubscribe = null;
-    
-    if (authMode === 'firebase' && isAuthenticated) {
-      console.log('🔥 Firebase mode detected - setting up auto-sync...');
-      loadFirebaseData();
-      unsubscribe = setupFirebaseListener();
-    }
 
-    // Lắng nghe thay đổi authentication
-    const checkAuth = () => {
-      const newAuthState = localStorage.getItem('isAuthenticated') === 'true';
-      setIsAuthenticated(newAuthState);
+    // Function to setup Firebase sync
+    const setupFirebaseSync = () => {
+      const authMode = localStorage.getItem('authMode');
+      const authState = localStorage.getItem('isAuthenticated') === 'true';
       
-      // Load data when login with Firebase
-      const newAuthMode = localStorage.getItem('authMode');
-      if (newAuthState && newAuthMode === 'firebase') {
-        console.log('🔥 Auth changed - reloading Firebase data...');
-        loadFirebaseData();
-        if (unsubscribe) unsubscribe(); // Clean up old listener
-        unsubscribe = setupFirebaseListener();
+      if (authMode === 'firebase' && authState) {
+        console.log('🔥 [App] Firebase mode detected - setting up auto-sync...');
+        
+        // Clean up old listener first
+        if (unsubscribe) {
+          console.log('🧹 [App] Cleaning up old listener');
+          unsubscribe();
+          unsubscribe = null;
+        }
+        
+        // Small delay to ensure Firebase auth is ready
+        setTimeout(() => {
+          loadFirebaseData();
+          unsubscribe = setupFirebaseListener();
+        }, 500);
       }
     };
 
+    // Setup on mount
+    setupFirebaseSync();
+
+    // Lắng nghe thay đổi authentication từ localStorage
+    const checkAuth = () => {
+      const newAuthState = localStorage.getItem('isAuthenticated') === 'true';
+      const newAuthMode = localStorage.getItem('authMode');
+      
+      setIsAuthenticated(newAuthState);
+      
+      if (newAuthState && newAuthMode === 'firebase') {
+        console.log('🔥 [App] Auth changed - reloading Firebase data...');
+        setupFirebaseSync();
+      } else if (!newAuthState && unsubscribe) {
+        // Clean up listener on logout
+        console.log('🧹 [App] Logging out - cleaning up listener');
+        unsubscribe();
+        unsubscribe = null;
+      }
+    };
+
+    // Listen to storage events (from other tabs or login)
     window.addEventListener('storage', checkAuth);
+    
+    // Also listen to custom login event
+    const handleLogin = () => {
+      console.log('🔔 [App] Login event received');
+      checkAuth();
+    };
+    window.addEventListener('firebase-login', handleLogin);
+    
+    // Polling check (backup mechanism) - check every 2 seconds
+    const pollInterval = setInterval(() => {
+      const authMode = localStorage.getItem('authMode');
+      const authState = localStorage.getItem('isAuthenticated') === 'true';
+      
+      if (authMode === 'firebase' && authState && !unsubscribe) {
+        console.log('🔄 [App] Polling detected Firebase auth - setting up listener');
+        setupFirebaseSync();
+      }
+    }, 2000);
     
     return () => {
       window.removeEventListener('storage', checkAuth);
-      if (unsubscribe) unsubscribe(); // Clean up listener on unmount
+      window.removeEventListener('firebase-login', handleLogin);
+      clearInterval(pollInterval);
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, [isAuthenticated]);
 
