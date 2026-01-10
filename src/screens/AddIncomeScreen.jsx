@@ -20,6 +20,42 @@ const AddIncomeScreen = () => {
     date: getCurrentDate(),
   });
 
+  const [smartSuggestions, setSmartSuggestions] = useState([]);
+
+  // Tạo gợi ý thông minh dựa trên số đang nhập
+  useEffect(() => {
+    const inputValue = formData.amount;
+    
+    // Nếu ô trống hoặc chỉ có dấu, hiển thị gợi ý mặc định
+    if (!inputValue || inputValue === '0' || inputValue === '.') {
+      setSmartSuggestions([
+        { value: '10000', label: '10k' },
+        { value: '50000', label: '50k' },
+        { value: '100000', label: '100k' },
+        { value: '500000', label: '500k' },
+      ]);
+      return;
+    }
+
+    // Lấy phần số nguyên (bỏ dấu thập phân)
+    const baseNumber = parseFloat(inputValue);
+    
+    if (isNaN(baseNumber) || baseNumber <= 0) {
+      setSmartSuggestions([]);
+      return;
+    }
+
+    // Tạo các gợi ý: x1000, x10000, x100000, x1000000
+    const suggestions = [
+      { value: (baseNumber * 1000).toString(), label: `${baseNumber}k` },
+      { value: (baseNumber * 10000).toString(), label: `${baseNumber * 10}k` },
+      { value: (baseNumber * 100000).toString(), label: `${baseNumber * 100}k` },
+      { value: (baseNumber * 1000000).toString(), label: `${baseNumber}tr` },
+    ].filter(s => parseFloat(s.value) <= 1000000000); // Giới hạn 1 tỷ
+
+    setSmartSuggestions(suggestions);
+  }, [formData.amount]);
+
   // Load existing transaction data in edit mode
   useEffect(() => {
     if (editMode && existingTransaction) {
@@ -158,68 +194,26 @@ const AddIncomeScreen = () => {
                 <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm font-semibold text-gray-500">VNĐ</span>
               </div>
               
-              {/* Gợi ý số tiền nhanh */}
-              <div className="mt-2">
-                <p className="text-xs text-gray-500 mb-2">Chọn nhanh:</p>
-                <div className="grid grid-cols-4 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '10000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    10k
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '50000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    50k
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '100000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    100k
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '200000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    200k
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '500000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    500k
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '1000000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    1tr
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '5000000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    5tr
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, amount: '10000000' }))}
-                    className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
-                  >
-                    10tr
-                  </button>
+              {/* Gợi ý số tiền thông minh */}
+              {smartSuggestions.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-500 mb-2">
+                    {formData.amount && formData.amount !== '0' ? 'Gợi ý cho bạn:' : 'Chọn nhanh:'}
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {smartSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, amount: suggestion.value }))}
+                        className="px-3 py-2 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors border border-green-200 font-medium"
+                      >
+                        {suggestion.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
