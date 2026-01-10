@@ -1,12 +1,84 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, Download, Database, AlertTriangle } from 'lucide-react';
+import { Upload, Download, Database, AlertTriangle, RefreshCw } from 'lucide-react';
 import Logo from '../components/Logo';
 import { getAllTransactions } from '../services/storage';
+import { getAllTransactionsFromFirebase, syncTransactionToFirebase } from '../services/firebase';
 
 export default function SettingsScreen() {
   const navigate = useNavigate();
   const [importMode, setImportMode] = useState('merge'); // merge or replace
+  const [syncing, setSyncing] = useState(false);
+
+  // Sync from Firebase manually
+  const handleSyncFromFirebase = async () => {
+    const authMode = localStorage.getItem('authMode');
+    
+    if (authMode !== 'firebase') {
+      alert('⚠️ Bạn cần đăng nhập bằng ☁️ Cloud Sync để dùng chức năng này!');
+      return;
+    }
+
+    try {
+      setSyncing(true);
+      const result = await getAllTransactionsFromFirebase();
+      
+      if (result.success && result.transactions) {
+        const localData = JSON.parse(localStorage.getItem('quanlythuchi_transactions') || '[]');
+        const firebaseData = result.transactions;
+        
+        // Merge data
+        const dataMap = new Map();
+        [...localData, ...firebaseData].forEach(t => {
+          dataMap.set(t.id, t);
+        });
+        
+        const mergedData = Array.from(dataMap.values());
+        localStorage.setItem('quanlythuchi_transactions', JSON.stringify(mergedData));
+        
+        alert(`✅ Đã tải ${firebaseData.length} giao dịch từ Cloud!\nTổng: ${mergedData.length} giao dịch`);
+        window.location.reload();
+      } else {
+        alert('❌ Không có dữ liệu trên Cloud hoặc có lỗi: ' + (result.error || ''));
+      }
+    } catch (error) {
+      alert('❌ Lỗi khi đồng bộ: ' + error.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Sync to Firebase manually
+  const handleSyncToFirebase = async () => {
+    const authMode = localStorage.getItem('authMode');
+    
+    if (authMode !== 'firebase') {
+      alert('⚠️ Bạn cần đăng nhập bằng ☁️ Cloud Sync để dùng chức năng này!');
+      return;
+    }
+
+    try {
+      setSyncing(true);
+      const localTransactions = getAllTransactions();
+      
+      if (localTransactions.length === 0) {
+        alert('⚠️ Không có dữ liệu để đồng bộ!');
+        return;
+      }
+
+      let successCount = 0;
+      for (const transaction of localTransactions) {
+        const result = await syncTransactionToFirebase(transaction);
+        if (result.success) successCount++;
+      }
+      
+      alert(`✅ Đã đồng bộ ${successCount}/${localTransactions.length} giao dịch lên Cloud!`);
+    } catch (error) {
+      alert('❌ Lỗi khi đồng bộ: ' + error.message);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Export toàn bộ dữ liệu
   const handleExportData = () => {
@@ -93,6 +165,9 @@ export default function SettingsScreen() {
     }
   };
 
+  const authMode = localStorage.getItem('authMode');
+  const isFirebaseMode = authMode === 'firebase';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 pb-20">
       {/* Header */}
@@ -103,8 +178,7 @@ export default function SettingsScreen() {
               onClick={() => navigate('/')}
               className="flex items-center text-white hover:text-blue-100 transition-colors text-sm"
             >
-              <ArrowLeft size={18} className="mr-1" />
-              Quay lại
+              ← Quay lại
             </button>
             <Logo size="sm" />
           </div>
@@ -114,6 +188,43 @@ export default function SettingsScreen() {
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {/* Firebase Sync Section */}
+        {isFirebaseMode && (
+          <div className="bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-xl shadow-lg p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <RefreshCw size={24} />
+              <h3 className="font-bold text-lg">☁️ Đồng bộ Cloud</h3>
+            </div>
+            <p className="text-sm mb-4 text-blue-50">
+              Bạn đang dùng chế độ Cloud Sync. Dữ liệu tự động đồng bộ, nhưng có thể sync thủ công nếu cần.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleSyncFromFirebase}
+                disabled={syncing}
+                className="bg-white text-blue-600 py-3 px-4 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Download size={18} />
+                Tải xuống
+              </button>
+              <button
+                onClick={handleSyncToFirebase}
+                disabled={syncing}
+                className="bg-white text-indigo-600 py-3 px-4 rounded-lg font-semibold hover:bg-indigo-50 transition-colors shadow-md disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Upload size={18} />
+                Đẩy lên
+              </button>
+            </div>
+            {syncing && (
+              <div className="mt-3 text-center text-sm text-blue-100">
+                <RefreshCw size={16} className="inline animate-spin mr-2" />
+                Đang xử lý...
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Export Data */}
         <div className="bg-white rounded-xl shadow-md p-5 border border-blue-100">
           <div className="flex items-start gap-3">
@@ -221,12 +332,20 @@ export default function SettingsScreen() {
 
         {/* Info */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-          <h4 className="font-semibold text-blue-900 mb-2">💡 Cách sử dụng:</h4>
-          <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
-            <li><strong>Máy A:</strong> Xuất dữ liệu → Lưu file JSON</li>
-            <li><strong>Chuyển file:</strong> Email, USB, Google Drive...</li>
-            <li><strong>Máy B:</strong> Nhập dữ liệu → Chọn file → Xong!</li>
-          </ol>
+          <h4 className="font-semibold text-blue-900 mb-2">💡 Hướng dẫn:</h4>
+          {isFirebaseMode ? (
+            <div className="text-sm text-blue-800 space-y-1">
+              <p><strong>☁️ Cloud Sync:</strong> Dữ liệu tự động đồng bộ giữa các máy</p>
+              <p><strong>Nếu không thấy dữ liệu:</strong> Click "Tải xuống" để sync thủ công</p>
+              <p><strong>Backup:</strong> Vẫn nên xuất dữ liệu định kỳ để an toàn</p>
+            </div>
+          ) : (
+            <ol className="text-sm text-blue-800 space-y-1 list-decimal list-inside">
+              <li><strong>Máy A:</strong> Xuất dữ liệu → Lưu file JSON</li>
+              <li><strong>Chuyển file:</strong> Email, USB, Google Drive...</li>
+              <li><strong>Máy B:</strong> Nhập dữ liệu → Chọn file → Xong!</li>
+            </ol>
+          )}
         </div>
       </div>
     </div>
