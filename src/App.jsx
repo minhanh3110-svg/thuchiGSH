@@ -6,6 +6,7 @@ import AddIncomeScreen from './screens/AddIncomeScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
 import ReportScreen from './screens/ReportScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import SettingsScreen from './screens/SettingsScreen';
 import LoginScreen from './screens/LoginScreen';
 import { initStorage } from './services/storage';
 
@@ -78,6 +79,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <HistoryScreen />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute>
+                <SettingsScreen />
               </ProtectedRoute>
             } 
           />
