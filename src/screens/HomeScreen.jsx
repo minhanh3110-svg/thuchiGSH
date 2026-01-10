@@ -98,6 +98,26 @@ const HomeScreen = () => {
 
   useEffect(() => {
     loadData();
+    
+    // Listen for Firebase sync events
+    const handleFirebaseSync = (event) => {
+      console.log('📱 HomeScreen: Firebase sync event received');
+      loadData();
+    };
+    
+    // Listen for storage changes (from other tabs or Firebase)
+    const handleStorageChange = () => {
+      console.log('📱 HomeScreen: Storage change detected');
+      loadData();
+    };
+    
+    window.addEventListener('firebase-sync', handleFirebaseSync);
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('firebase-sync', handleFirebaseSync);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [filterType, selectedDate, selectedMonth, transactionType, searchPerson]);
 
   const handleDelete = (id) => {

@@ -30,6 +30,21 @@ const ReportScreen = () => {
   useEffect(() => {
     loadReport();
     loadAvailableMonths();
+    
+    // Listen for Firebase sync events
+    const handleSync = () => {
+      console.log('📊 ReportScreen: Sync event received, reloading...');
+      loadReport();
+      loadAvailableMonths();
+    };
+    
+    window.addEventListener('firebase-sync', handleSync);
+    window.addEventListener('storage', handleSync);
+    
+    return () => {
+      window.removeEventListener('firebase-sync', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [selectedMonth, reportType]);
 
   const loadAvailableMonths = () => {

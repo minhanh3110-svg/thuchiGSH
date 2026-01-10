@@ -14,6 +14,20 @@ export default function HistoryScreen() {
 
   useEffect(() => {
     loadTransactions();
+    
+    // Listen for Firebase sync events
+    const handleSync = () => {
+      console.log('📜 HistoryScreen: Sync event received, reloading...');
+      loadTransactions();
+    };
+    
+    window.addEventListener('firebase-sync', handleSync);
+    window.addEventListener('storage', handleSync);
+    
+    return () => {
+      window.removeEventListener('firebase-sync', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, [filter, sortOrder]);
 
   const loadTransactions = () => {

@@ -29,9 +29,12 @@ function App() {
 
     // Load Firebase data if using Firebase auth
     const authMode = localStorage.getItem('authMode');
+    let unsubscribe = null;
+    
     if (authMode === 'firebase' && isAuthenticated) {
+      console.log('🔥 Firebase mode detected - setting up auto-sync...');
       loadFirebaseData();
-      setupFirebaseListener();
+      unsubscribe = setupFirebaseListener();
     }
 
     // Lắng nghe thay đổi authentication
@@ -42,13 +45,19 @@ function App() {
       // Load data when login with Firebase
       const newAuthMode = localStorage.getItem('authMode');
       if (newAuthState && newAuthMode === 'firebase') {
+        console.log('🔥 Auth changed - reloading Firebase data...');
         loadFirebaseData();
-        setupFirebaseListener();
+        if (unsubscribe) unsubscribe(); // Clean up old listener
+        unsubscribe = setupFirebaseListener();
       }
     };
 
     window.addEventListener('storage', checkAuth);
-    return () => window.removeEventListener('storage', checkAuth);
+    
+    return () => {
+      window.removeEventListener('storage', checkAuth);
+      if (unsubscribe) unsubscribe(); // Clean up listener on unmount
+    };
   }, [isAuthenticated]);
 
   const loadFirebaseData = async () => {
@@ -82,26 +91,49 @@ function App() {
   const setupFirebaseListener = () => {
     // Listen to realtime changes
     const unsubscribe = listenToTransactions((transactions) => {
-      if (transactions && transactions.length > 0) {
-        const localData = JSON.parse(localStorage.getItem('quanlythuchi_transactions') || '[]');
-        
-        // Merge Firebase data with local
-        const dataMap = new Map();
-        [...localData, ...transactions].forEach(t => {
-          dataMap.set(t.id, t);
-        });
-        
-        const mergedData = Array.from(dataMap.values());
+      console.log('🔄 Firebase realtime update received:', transactions.length, 'transactions');
+      
+      const localData = JSON.parse(localStorage.getItem('quanlythuchi_transactions') || '[]');
+      
+      // Merge Firebase data with local (Firebase is source of truth for synced data)
+      const dataMap = new Map();
+      
+      // Add local data first
+      localData.forEach(t => {
+        dataMap.set(t.id, t);
+      });
+      
+      // Override with Firebase data
+      transactions.forEach(t => {
+        dataMap.set(t.id, t);
+      });
+      
+      const mergedData = Array.from(dataMap.values());
+      
+      // Check if data actually changed (avoid infinite loops)
+      const currentDataStr = JSON.stringify(
+        localData.sort((a,b) => String(a.id).localeCompare(String(b.id)))
+      );
+      const newDataStr = JSON.stringify(
+        mergedData.sort((a,b) => String(a.id).localeCompare(String(b.id)))
+      );
+      
+      if (currentDataStr !== newDataStr) {
+        console.log('✅ Data changed! Updating localStorage...');
         localStorage.setItem('quanlythuchi_transactions', JSON.stringify(mergedData));
         
-        console.log('🔄 Realtime sync:', mergedData.length, 'transactions');
+        // Dispatch custom event to notify all components
+        window.dispatchEvent(new CustomEvent('firebase-sync', { 
+          detail: { transactions: mergedData } 
+        }));
         
-        // Trigger reload
+        // Also trigger storage event
         window.dispatchEvent(new Event('storage'));
+      } else {
+        console.log('ℹ️ No data change detected');
       }
     });
 
-    // Cleanup on unmount
     return unsubscribe;
   };
 
