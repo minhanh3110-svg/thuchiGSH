@@ -71,6 +71,28 @@ const AddIncomeScreen = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Xử lý paste số tiền từ Excel hoặc nơi khác
+  const handleAmountPaste = (e) => {
+    e.preventDefault();
+    
+    // Lấy text từ clipboard
+    const pastedText = e.clipboardData.getData('text');
+    
+    // Xử lý và làm sạch số tiền
+    // Loại bỏ: dấu phẩy, dấu chấm phân cách hàng nghìn, ký tự không phải số
+    // Giữ lại: số và dấu chấm thập phân cuối cùng
+    let cleanedValue = pastedText
+      .trim()
+      .replace(/[^\d.,]/g, '') // Chỉ giữ số, dấu phẩy, dấu chấm
+      .replace(/,/g, '') // Xóa tất cả dấu phẩy (phân cách hàng nghìn)
+      .replace(/\.(?=.*\.)/g, ''); // Xóa tất cả dấu chấm trừ dấu cuối cùng
+    
+    // Nếu có giá trị hợp lệ, cập nhật form
+    if (cleanedValue && !isNaN(parseFloat(cleanedValue))) {
+      setFormData(prev => ({ ...prev, amount: cleanedValue }));
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 pb-20">
       {/* Header */}
@@ -126,6 +148,7 @@ const AddIncomeScreen = () => {
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
+                  onPaste={handleAmountPaste}
                   placeholder="0"
                   min="0"
                   step="0.01"
