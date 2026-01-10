@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Calendar, User, DollarSign, Tag } from 'lucide-react';
+import { Trash2, Calendar, User, DollarSign, Tag, Edit } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { getAllTransactions, deleteTransaction } from '../services/storage';
 import { formatCurrency, formatDate } from '../utils/formatters';
@@ -8,6 +9,7 @@ export default function HistoryScreen() {
   const [transactions, setTransactions] = useState([]);
   const [filter, setFilter] = useState('all'); // all, income, expense
   const [sortOrder, setSortOrder] = useState('desc'); // desc = mới nhất, asc = cũ nhất
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadTransactions();
@@ -38,6 +40,12 @@ export default function HistoryScreen() {
       deleteTransaction(id);
       loadTransactions();
     }
+  };
+
+  const handleEdit = (transaction) => {
+    // Chuyển đến trang edit với transaction data
+    const editPath = transaction.type === 'income' ? '/add-income' : '/add-expense';
+    navigate(editPath, { state: { editMode: true, transaction } });
   };
 
   const getTypeColor = (type) => {
@@ -161,14 +169,23 @@ export default function HistoryScreen() {
                     </div>
                   </div>
 
-                  {/* Nút xóa */}
-                  <button
-                    onClick={() => handleDelete(transaction.id)}
-                    className="ml-4 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Xóa giao dịch"
-                  >
-                    <Trash2 size={20} />
-                  </button>
+                  {/* Nút sửa và xóa */}
+                  <div className="ml-4 flex flex-col gap-2">
+                    <button
+                      onClick={() => handleEdit(transaction)}
+                      className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Sửa giao dịch"
+                    >
+                      <Edit size={20} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(transaction.id)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Xóa giao dịch"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

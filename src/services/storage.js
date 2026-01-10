@@ -73,6 +73,44 @@ export const deleteTransaction = (id) => {
   }
 };
 
+// Update transaction
+export const updateTransaction = (id, updatedData) => {
+  try {
+    let transactions = getAllTransactions();
+    const index = transactions.findIndex(t => t.id === id);
+    
+    if (index === -1) {
+      throw new Error('Transaction not found');
+    }
+    
+    // Update transaction while keeping original id and createdAt
+    transactions[index] = {
+      ...transactions[index],
+      ...updatedData,
+      id: transactions[index].id, // Keep original id
+      createdAt: transactions[index].createdAt, // Keep original createdAt
+      updatedAt: new Date().toISOString(), // Add update timestamp
+    };
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    return transactions[index];
+  } catch (error) {
+    console.error('Error updating transaction:', error);
+    throw error;
+  }
+};
+
+// Get transaction by ID
+export const getTransactionById = (id) => {
+  try {
+    const transactions = getAllTransactions();
+    return transactions.find(t => t.id === parseInt(id));
+  } catch (error) {
+    console.error('Error getting transaction by ID:', error);
+    return null;
+  }
+};
+
 // Get transactions by month
 export const getTransactionsByMonth = (year, month) => {
   try {

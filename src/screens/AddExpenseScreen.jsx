@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MinusCircle, ArrowLeft } from 'lucide-react';
-import { addExpense } from '../services/storage';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { MinusCircle, ArrowLeft, Edit } from 'lucide-react';
+import { addExpense, updateTransaction } from '../services/storage';
 import { getCurrentDate } from '../utils/formatters';
 import { ExpenseCategories } from '../constants/categories';
 import Logo from '../components/Logo';
 
 const AddExpenseScreen = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editMode = location.state?.editMode || false;
+  const existingTransaction = location.state?.transaction || null;
+
   const [formData, setFormData] = useState({
     person: '',
     amount: '',
@@ -15,6 +19,19 @@ const AddExpenseScreen = () => {
     note: '',
     date: getCurrentDate(),
   });
+
+  // Load existing transaction data in edit mode
+  useEffect(() => {
+    if (editMode && existingTransaction) {
+      setFormData({
+        person: existingTransaction.person || '',
+        amount: existingTransaction.amount || '',
+        category: existingTransaction.category || '',
+        note: existingTransaction.note || '',
+        date: existingTransaction.date || getCurrentDate(),
+      });
+    }
+  }, [editMode, existingTransaction]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -25,12 +42,25 @@ const AddExpenseScreen = () => {
     }
 
     try {
-      addExpense({
-        ...formData,
-        amount: parseFloat(formData.amount),
-      });
-      alert('Thêm chi tiêu thành công!');
-      navigate('/');
+      if (editMode && existingTransaction) {
+        // Update existing transaction
+        updateTransaction(existingTransaction.id, {
+          person: formData.person,
+          amount: parseFloat(formData.amount),
+          category: formData.category,
+          note: formData.note,
+          date: formData.date,
+        });
+        alert('Cập nhật chi tiêu thành công!');
+      } else {
+        // Add new transaction
+        addExpense({
+          ...formData,
+          amount: parseFloat(formData.amount),
+        });
+        alert('Thêm chi tiêu thành công!');
+      }
+      navigate('/history');
     } catch (error) {
       alert('Có lỗi xảy ra. Vui lòng thử lại.');
     }
@@ -57,8 +87,8 @@ const AddExpenseScreen = () => {
             <Logo size="sm" />
           </div>
           <h1 className="text-xl font-bold flex items-center">
-            <MinusCircle size={24} className="mr-2" />
-            Thêm Chi Tiêu
+            {editMode ? <Edit size={24} className="mr-2" /> : <MinusCircle size={24} className="mr-2" />}
+            {editMode ? 'Sửa Chi Tiêu' : 'Thêm Chi Tiêu'}
           </h1>
         </div>
       </div>
@@ -171,8 +201,17 @@ const AddExpenseScreen = () => {
             type="submit"
             className="w-full mt-6 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-98 flex items-center justify-center text-base touch-manipulation"
           >
-            <MinusCircle size={20} className="mr-2" />
-            Thêm Chi Tiêu
+            {editMode ? (
+              <>
+                <Edit size={20} className="mr-2" />
+                Cập nhật Chi Tiêu
+              </>
+            ) : (
+              <>
+                <MinusCircle size={20} className="mr-2" />
+                Thêm Chi Tiêu
+              </>
+            )}
           </button>
         </form>
       </div>

@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusCircle, ArrowLeft } from 'lucide-react';
-import { addIncome } from '../services/storage';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { PlusCircle, ArrowLeft, Edit } from 'lucide-react';
+import { addIncome, updateTransaction } from '../services/storage';
 import { getCurrentDate } from '../utils/formatters';
 import { IncomeSources } from '../constants/categories';
 import Logo from '../components/Logo';
 
 const AddIncomeScreen = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editMode = location.state?.editMode || false;
+  const existingTransaction = location.state?.transaction || null;
+
   const [formData, setFormData] = useState({
     person: '',
     amount: '',
@@ -15,6 +19,19 @@ const AddIncomeScreen = () => {
     note: '',
     date: getCurrentDate(),
   });
+
+  // Load existing transaction data in edit mode
+  useEffect(() => {
+    if (editMode && existingTransaction) {
+      setFormData({
+        person: existingTransaction.person || '',
+        amount: existingTransaction.amount || '',
+        source: existingTransaction.category || '',
+        note: existingTransaction.note || '',
+        date: existingTransaction.date || getCurrentDate(),
+      });
+    }
+  }, [editMode, existingTransaction]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -25,12 +42,25 @@ const AddIncomeScreen = () => {
     }
 
     try {
-      addIncome({
-        ...formData,
-        amount: parseFloat(formData.amount),
-      });
-      alert('Thêm thu nhập thành công!');
-      navigate('/');
+      if (editMode && existingTransaction) {
+        // Update existing transaction
+        updateTransaction(existingTransaction.id, {
+          person: formData.person,
+          amount: parseFloat(formData.amount),
+          category: formData.source,
+          note: formData.note,
+          date: formData.date,
+        });
+        alert('Cập nhật thu nhập thành công!');
+      } else {
+        // Add new transaction
+        addIncome({
+          ...formData,
+          amount: parseFloat(formData.amount),
+        });
+        alert('Thêm thu nhập thành công!');
+      }
+      navigate('/history');
     } catch (error) {
       alert('Có lỗi xảy ra. Vui lòng thử lại.');
     }
@@ -57,8 +87,8 @@ const AddIncomeScreen = () => {
             <Logo size="sm" />
           </div>
           <h1 className="text-xl font-bold flex items-center">
-            <PlusCircle size={24} className="mr-2" />
-            Thêm Thu Nhập
+            {editMode ? <Edit size={24} className="mr-2" /> : <PlusCircle size={24} className="mr-2" />}
+            {editMode ? 'Sửa Thu Nhập' : 'Thêm Thu Nhập'}
           </h1>
         </div>
       </div>
@@ -170,8 +200,17 @@ const AddIncomeScreen = () => {
             type="submit"
             className="w-full mt-6 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl active:scale-98 flex items-center justify-center text-base touch-manipulation"
           >
-            <PlusCircle size={20} className="mr-2" />
-            Thêm Thu Nhập
+            {editMode ? (
+              <>
+                <Edit size={20} className="mr-2" />
+                Cập nhật Thu Nhập
+              </>
+            ) : (
+              <>
+                <PlusCircle size={20} className="mr-2" />
+                Thêm Thu Nhập
+              </>
+            )}
           </button>
         </form>
       </div>
