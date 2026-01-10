@@ -38,20 +38,20 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="bg-white border-t-2 border-gray-200 fixed bottom-0 left-0 right-0 z-50 shadow-lg">
-      <div className="max-w-screen-lg mx-auto flex justify-around items-center h-16 px-1">
+    <nav className="bg-white border-t-2 border-gray-200 fixed bottom-0 left-0 right-0 z-50 shadow-lg safe-area-bottom">
+      <div className="max-w-screen-lg mx-auto grid grid-cols-7 gap-0.5 px-2 py-2">
         {navItems.map(({ path, icon: Icon, label, color }) => {
           const isActive = location.pathname === path;
           return (
             <Link
               key={path}
               to={path}
-              className={`flex flex-col items-center justify-center flex-1 h-12 rounded-xl mx-0.5 transition-all ${
+              className={`flex flex-col items-center justify-center min-h-[56px] py-1.5 rounded-lg transition-all ${
                 getColorClass(color, isActive)
               }`}
             >
-              <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
-              <span className={`text-xs mt-0.5 font-${isActive ? 'bold' : 'medium'}`}>
+              <Icon size={22} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
+              <span className={`text-[10px] leading-tight mt-1 font-${isActive ? 'semibold' : 'normal'} whitespace-nowrap`}>
                 {label}
               </span>
             </Link>
@@ -61,10 +61,10 @@ const Navigation = () => {
         {/* Nút đăng xuất */}
         <button
           onClick={handleLogout}
-          className="flex flex-col items-center justify-center flex-1 h-12 rounded-xl mx-0.5 transition-all text-gray-400 hover:text-red-600 hover:bg-red-50"
+          className="flex flex-col items-center justify-center min-h-[56px] py-1.5 rounded-lg transition-all text-gray-400 active:text-red-600 active:bg-red-50"
         >
-          <LogOut size={20} strokeWidth={2} />
-          <span className="text-xs mt-0.5 font-medium">
+          <LogOut size={22} strokeWidth={2} className="flex-shrink-0" />
+          <span className="text-[10px] leading-tight mt-1 font-normal whitespace-nowrap">
             Thoát
           </span>
         </button>
