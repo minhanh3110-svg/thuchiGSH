@@ -1,9 +1,18 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, PlusCircle, MinusCircle, BarChart3 } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Home, PlusCircle, MinusCircle, BarChart3, LogOut } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    if (confirm('Bạn có chắc muốn đăng xuất?')) {
+      localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('username');
+      navigate('/login');
+    }
+  };
 
   const navItems = [
     { path: '/', icon: Home, label: 'Trang chủ', color: 'blue' },
@@ -44,6 +53,17 @@ const Navigation = () => {
             </Link>
           );
         })}
+        
+        {/* Nút đăng xuất */}
+        <button
+          onClick={handleLogout}
+          className="flex flex-col items-center justify-center flex-1 h-12 rounded-xl mx-1 transition-all text-gray-400 hover:text-red-600 hover:bg-red-50"
+        >
+          <LogOut size={22} strokeWidth={2} />
+          <span className="text-xs mt-0.5 font-medium">
+            Thoát
+          </span>
+        </button>
       </div>
     </nav>
   );
