@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, Filter, Search } from 'lucide-react';
+import { Calendar, Filter } from 'lucide-react';
 
 const TransactionFilter = ({ 
   filterType, 
@@ -11,7 +11,8 @@ const TransactionFilter = ({
   transactionType,
   setTransactionType,
   searchPerson,
-  setSearchPerson
+  setSearchPerson,
+  personNames = []
 }) => {
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -119,22 +120,22 @@ const TransactionFilter = ({
                 ? 'Tên người chi'
                 : 'Tên người thu/chi'}
             </label>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchPerson}
-                onChange={(e) => setSearchPerson(e.target.value)}
-                placeholder={
-                  transactionType === 'income' 
-                    ? 'Tìm người thu...' 
-                    : transactionType === 'expense'
-                    ? 'Tìm người chi...'
-                    : 'Tìm theo tên...'
-                }
-                className="w-full px-3 py-2 pl-9 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none"
-              />
-              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-            </div>
+            <select
+              value={searchPerson}
+              onChange={(e) => setSearchPerson(e.target.value)}
+              className="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all outline-none bg-white"
+            >
+              <option value="">-- Chọn tên --</option>
+              {personNames.length > 0 ? (
+                personNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))
+              ) : (
+                <option value="" disabled>Chưa có dữ liệu</option>
+              )}
+            </select>
           </div>
         </div>
 

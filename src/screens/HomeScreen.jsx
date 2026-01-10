@@ -31,6 +31,39 @@ const HomeScreen = () => {
   const [transactionType, setTransactionType] = useState('all'); // 'all', 'income', 'expense'
   const [searchPerson, setSearchPerson] = useState(''); // Search by person name
 
+  // Get list of person names based on transaction type
+  const getPersonNames = () => {
+    let allData = [];
+    
+    // Get data based on time filter
+    switch (filterType) {
+      case 'all':
+        allData = getAllTransactions();
+        break;
+      case 'today':
+        allData = getTodayTransactions();
+        break;
+      case 'date':
+        allData = getTransactionsByDate(selectedDate);
+        break;
+      case 'month':
+        const { year, month } = parseMonthString(selectedMonth);
+        allData = getTransactionsByMonth(year, month);
+        break;
+      default:
+        allData = getAllTransactions();
+    }
+
+    // Filter by transaction type if needed
+    if (transactionType !== 'all') {
+      allData = allData.filter(t => t.type === transactionType);
+    }
+
+    // Get unique person names
+    const personNames = [...new Set(allData.map(t => t.person).filter(Boolean))];
+    return personNames.sort();
+  };
+
   const loadData = () => {
     setLoading(true);
     try {
@@ -95,6 +128,11 @@ const HomeScreen = () => {
       setLoading(false);
     }
   };
+
+  // Reset searchPerson when transactionType changes
+  useEffect(() => {
+    setSearchPerson('');
+  }, [transactionType, filterType, selectedDate, selectedMonth]);
 
   useEffect(() => {
     loadData();
@@ -206,6 +244,7 @@ const HomeScreen = () => {
           setTransactionType={setTransactionType}
           searchPerson={searchPerson}
           setSearchPerson={setSearchPerson}
+          personNames={getPersonNames()}
         />
 
         {/* Transactions List */}
