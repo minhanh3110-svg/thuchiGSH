@@ -92,14 +92,13 @@ const AddExpenseScreen = () => {
               <div className="relative">
                 <input
                   type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
+                  inputMode="decimal"
                   name="amount"
                   value={formData.amount}
                   onChange={handleChange}
                   placeholder="0"
                   min="0"
-                  step="1000"
+                  step="0.01"
                   className="w-full px-4 py-3 pr-16 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-all outline-none"
                   required
                 />
