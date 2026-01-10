@@ -5,6 +5,7 @@ import HomeScreen from './screens/HomeScreen';
 import AddIncomeScreen from './screens/AddIncomeScreen';
 import AddExpenseScreen from './screens/AddExpenseScreen';
 import ReportScreen from './screens/ReportScreen';
+import HistoryScreen from './screens/HistoryScreen';
 import LoginScreen from './screens/LoginScreen';
 import { initStorage } from './services/storage';
 
@@ -69,6 +70,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ReportScreen />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/history" 
+            element={
+              <ProtectedRoute>
+                <HistoryScreen />
               </ProtectedRoute>
             } 
           />

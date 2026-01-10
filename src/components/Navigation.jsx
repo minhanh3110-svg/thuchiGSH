@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, PlusCircle, MinusCircle, BarChart3, LogOut } from 'lucide-react';
+import { Home, PlusCircle, MinusCircle, BarChart3, BookOpen, LogOut } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();
@@ -18,6 +18,7 @@ const Navigation = () => {
     { path: '/', icon: Home, label: 'Trang chủ', color: 'blue' },
     { path: '/add-income', icon: PlusCircle, label: 'Thu', color: 'green' },
     { path: '/add-expense', icon: MinusCircle, label: 'Chi', color: 'red' },
+    { path: '/history', icon: BookOpen, label: 'Nhật ký', color: 'orange' },
     { path: '/report', icon: BarChart3, label: 'Báo cáo', color: 'purple' },
   ];
 
@@ -28,6 +29,7 @@ const Navigation = () => {
       blue: 'text-blue-600 bg-blue-50',
       green: 'text-green-600 bg-green-50',
       red: 'text-red-600 bg-red-50',
+      orange: 'text-orange-600 bg-orange-50',
       purple: 'text-purple-600 bg-purple-50',
     };
     return colors[color] || 'text-blue-600 bg-blue-50';
