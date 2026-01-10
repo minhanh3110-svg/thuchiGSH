@@ -66,17 +66,22 @@ export const getCurrentUser = () => {
 export const syncTransactionToFirebase = async (transaction) => {
   try {
     const user = getCurrentUser();
-    if (!user) return { success: false, error: 'Not authenticated' };
+    if (!user) {
+      console.error('❌ [Firebase Sync] Not authenticated');
+      return { success: false, error: 'Not authenticated' };
+    }
 
+    console.log('🔄 [Firebase Sync] Syncing transaction:', transaction.id, 'for user:', user.email);
     const transactionRef = doc(db, `users/${user.uid}/transactions/${transaction.id}`);
     await setDoc(transactionRef, {
       ...transaction,
       updatedAt: new Date().toISOString()
     });
     
+    console.log('✅ [Firebase Sync] Success!');
     return { success: true };
   } catch (error) {
-    console.error("Sync error:", error);
+    console.error("❌ [Firebase Sync] Error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -120,20 +125,28 @@ export const getAllTransactionsFromFirebase = async () => {
 export const listenToTransactions = (callback) => {
   try {
     const user = getCurrentUser();
-    if (!user) return null;
+    if (!user) {
+      console.warn('⚠️ [Firebase Listener] No user logged in');
+      return null;
+    }
 
+    console.log('👂 [Firebase Listener] Setting up realtime listener for user:', user.email);
     const transactionsRef = collection(db, `users/${user.uid}/transactions`);
     const q = query(transactionsRef, orderBy('date', 'desc'));
     
     return onSnapshot(q, (snapshot) => {
+      console.log('📡 [Firebase Listener] Snapshot received! Docs count:', snapshot.size);
       const transactions = [];
       snapshot.forEach((doc) => {
         transactions.push({ id: doc.id, ...doc.data() });
       });
+      console.log('📦 [Firebase Listener] Calling callback with', transactions.length, 'transactions');
       callback(transactions);
+    }, (error) => {
+      console.error('❌ [Firebase Listener] Error:', error);
     });
   } catch (error) {
-    console.error("Listen error:", error);
+    console.error('❌ [Firebase Listener] Setup error:', error);
     return null;
   }
 };

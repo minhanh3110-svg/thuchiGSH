@@ -42,10 +42,23 @@ export const addTransaction = (transaction) => {
     
     // Sync to Firebase if using Firebase auth
     const authMode = localStorage.getItem('authMode');
+    console.log('💾 [Storage] Added transaction:', newTransaction.id, '| Auth mode:', authMode);
+    
     if (authMode === 'firebase') {
-      syncTransactionToFirebase(newTransaction).catch(err => 
-        console.error('Firebase sync error:', err)
-      );
+      console.log('🔥 [Storage] Syncing to Firebase...');
+      syncTransactionToFirebase(newTransaction)
+        .then(result => {
+          if (result.success) {
+            console.log('✅ [Storage] Synced to Firebase successfully!');
+          } else {
+            console.error('❌ [Storage] Firebase sync failed:', result.error);
+          }
+        })
+        .catch(err => {
+          console.error('❌ [Storage] Firebase sync error:', err);
+        });
+    } else {
+      console.log('ℹ️ [Storage] Not syncing (local mode)');
     }
     
     return newTransaction;
