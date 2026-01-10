@@ -88,15 +88,39 @@ export const addExpense = (data) => {
 export const deleteTransaction = (id) => {
   try {
     let transactions = getAllTransactions();
+    const transactionToDelete = transactions.find(t => t.id === id);
+    
+    if (!transactionToDelete) {
+      console.warn('⚠️ [Storage] Transaction not found:', id);
+      return false;
+    }
+    
+    // Remove from local storage
     transactions = transactions.filter(t => t.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
     
     // Sync delete to Firebase if using Firebase auth
     const authMode = localStorage.getItem('authMode');
+    console.log('🗑️ [Storage] Deleting transaction:', id, '| Auth mode:', authMode);
+    
     if (authMode === 'firebase') {
-      deleteTransactionFromFirebase(id).catch(err => 
-        console.error('Firebase delete error:', err)
-      );
+      console.log('🔥 [Storage] Syncing delete to Firebase...');
+      // Use String(id) to ensure consistent ID format
+      deleteTransactionFromFirebase(String(id))
+        .then(result => {
+          if (result.success) {
+            console.log('✅ [Storage] Deleted from Firebase successfully!');
+          } else {
+            console.error('❌ [Storage] Firebase delete failed:', result.error);
+            // If delete failed, the listener will restore it from Firebase
+          }
+        })
+        .catch(err => {
+          console.error('❌ [Storage] Firebase delete error:', err);
+          // If delete failed, the listener will restore it from Firebase
+        });
+    } else {
+      console.log('ℹ️ [Storage] Not syncing delete (local mode)');
     }
     
     return true;

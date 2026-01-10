@@ -89,14 +89,24 @@ export const syncTransactionToFirebase = async (transaction) => {
 export const deleteTransactionFromFirebase = async (transactionId) => {
   try {
     const user = getCurrentUser();
-    if (!user) return { success: false, error: 'Not authenticated' };
+    if (!user) {
+      console.error('❌ [Firebase Delete] Not authenticated');
+      return { success: false, error: 'Not authenticated' };
+    }
 
-    const transactionRef = doc(db, `users/${user.uid}/transactions/${transactionId}`);
+    // Ensure transactionId is string for consistency
+    const id = String(transactionId);
+    console.log('🗑️ [Firebase Delete] Deleting transaction:', id, 'for user:', user.email, 'UID:', user.uid);
+    const transactionRef = doc(db, `users/${user.uid}/transactions/${id}`);
     await deleteDoc(transactionRef);
     
+    console.log('✅ [Firebase Delete] Success! Transaction', id, 'deleted from Firebase');
     return { success: true };
   } catch (error) {
-    console.error("Delete error:", error);
+    console.error("❌ [Firebase Delete] Error:", error);
+    if (error.code === 'permission-denied') {
+      console.error('🚫 [Firebase Delete] Permission denied - check Firebase Security Rules!');
+    }
     return { success: false, error: error.message };
   }
 };

@@ -149,24 +149,19 @@ function App() {
   const setupFirebaseListener = () => {
     // Listen to realtime changes
     const unsubscribe = listenToTransactions((transactions) => {
-      console.log('🔄 Firebase realtime update received:', transactions.length, 'transactions');
+      console.log('🔄 [App] Firebase realtime update received:', transactions.length, 'transactions');
       
       const localData = JSON.parse(localStorage.getItem('quanlythuchi_transactions') || '[]');
       
-      // Merge Firebase data with local (Firebase is source of truth for synced data)
-      const dataMap = new Map();
+      // Firebase is the source of truth - use Firebase data as base
+      // Only keep local transactions that don't exist in Firebase (pending sync)
+      const firebaseIds = new Set(transactions.map(t => String(t.id)));
+      const pendingLocal = localData.filter(t => !firebaseIds.has(String(t.id)));
       
-      // Add local data first
-      localData.forEach(t => {
-        dataMap.set(t.id, t);
-      });
+      // Merge: Firebase data (source of truth) + pending local data
+      const mergedData = [...transactions, ...pendingLocal];
       
-      // Override with Firebase data
-      transactions.forEach(t => {
-        dataMap.set(t.id, t);
-      });
-      
-      const mergedData = Array.from(dataMap.values());
+      console.log('📊 [App] Merge: Firebase:', transactions.length, '| Pending local:', pendingLocal.length, '| Total:', mergedData.length);
       
       // Check if data actually changed (avoid infinite loops)
       const currentDataStr = JSON.stringify(
@@ -177,7 +172,7 @@ function App() {
       );
       
       if (currentDataStr !== newDataStr) {
-        console.log('✅ Data changed! Updating localStorage...');
+        console.log('✅ [App] Data changed! Updating localStorage...');
         localStorage.setItem('quanlythuchi_transactions', JSON.stringify(mergedData));
         
         // Dispatch custom event to notify all components
@@ -188,7 +183,7 @@ function App() {
         // Also trigger storage event
         window.dispatchEvent(new Event('storage'));
       } else {
-        console.log('ℹ️ No data change detected');
+        console.log('ℹ️ [App] No data change detected');
       }
     });
 
