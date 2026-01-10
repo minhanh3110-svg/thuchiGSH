@@ -1,4 +1,6 @@
 // LocalStorage service for managing transactions
+import { syncTransactionToFirebase, deleteTransactionFromFirebase } from './firebase';
+
 const STORAGE_KEY = 'quanlythuchi_transactions';
 
 // Initialize storage
@@ -37,6 +39,15 @@ export const addTransaction = (transaction) => {
     };
     transactions.push(newTransaction);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    
+    // Sync to Firebase if using Firebase auth
+    const authMode = localStorage.getItem('authMode');
+    if (authMode === 'firebase') {
+      syncTransactionToFirebase(newTransaction).catch(err => 
+        console.error('Firebase sync error:', err)
+      );
+    }
+    
     return newTransaction;
   } catch (error) {
     console.error('Error adding transaction:', error);
@@ -66,6 +77,15 @@ export const deleteTransaction = (id) => {
     let transactions = getAllTransactions();
     transactions = transactions.filter(t => t.id !== id);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    
+    // Sync delete to Firebase if using Firebase auth
+    const authMode = localStorage.getItem('authMode');
+    if (authMode === 'firebase') {
+      deleteTransactionFromFirebase(id).catch(err => 
+        console.error('Firebase delete error:', err)
+      );
+    }
+    
     return true;
   } catch (error) {
     console.error('Error deleting transaction:', error);
@@ -93,6 +113,15 @@ export const updateTransaction = (id, updatedData) => {
     };
     
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    
+    // Sync update to Firebase if using Firebase auth
+    const authMode = localStorage.getItem('authMode');
+    if (authMode === 'firebase') {
+      syncTransactionToFirebase(transactions[index]).catch(err => 
+        console.error('Firebase sync error:', err)
+      );
+    }
+    
     return transactions[index];
   } catch (error) {
     console.error('Error updating transaction:', error);

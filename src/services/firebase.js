@@ -3,14 +3,14 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, si
 import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 // Firebase configuration
-// QUAN TRỌNG: Bạn cần tạo Firebase project và thay thế config này
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyATicaltP6oyDMcc6F-sGWowJDyWO2SFts",
+  authDomain: "quanlythuchi-4fe1c.firebaseapp.com",
+  projectId: "quanlythuchi-4fe1c",
+  storageBucket: "quanlythuchi-4fe1c.firebasestorage.app",
+  messagingSenderId: "318067137941",
+  appId: "1:318067137941:web:aee68e34a9e4ed79c26a9c",
+  measurementId: "G-C0ZB2YJJ8G"
 };
 
 // Initialize Firebase
