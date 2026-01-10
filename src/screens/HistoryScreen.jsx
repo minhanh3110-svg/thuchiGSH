@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Trash2, Calendar, User, DollarSign, Tag, Edit } from 'lucide-react';
+import { Trash2, Calendar, User, DollarSign, Tag, Edit, FileSpreadsheet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
 import { getAllTransactions, deleteTransaction } from '../services/storage';
 import { formatCurrency, formatDate } from '../utils/formatters';
@@ -58,12 +59,69 @@ export default function HistoryScreen() {
     return type === 'income' ? 'Thu' : 'Chi';
   };
 
+  const handleExportExcel = () => {
+    const filterLabel = filter === 'all' ? 'Tất cả' : (filter === 'income' ? 'Thu' : 'Chi');
+    const sortLabel = sortOrder === 'desc' ? 'Mới nhất' : 'Cũ nhất';
+    const fileName = `Nhat-Ky-${filterLabel}-${new Date().toISOString().split('T')[0]}.xlsx`;
+
+    // Dữ liệu export
+    const data = [
+      ['NHẬT KÝ THU CHI'],
+      ['Loại:', filterLabel],
+      ['Sắp xếp:', sortLabel],
+      ['Tổng số giao dịch:', transactions.length],
+      ['Ngày xuất:', new Date().toLocaleString('vi-VN')],
+      [],
+      ['Ngày', 'Loại', 'Người', 'Khách hàng', 'Danh mục', 'Số tiền', 'Ghi chú']
+    ];
+
+    transactions.forEach(t => {
+      data.push([
+        formatDate(t.date),
+        t.type === 'income' ? 'Thu' : 'Chi',
+        t.person || '',
+        t.customerName || '',
+        t.category || '',
+        t.amount,
+        t.note || ''
+      ]);
+    });
+
+    // Tạo workbook và worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    
+    // Định dạng cột
+    ws['!cols'] = [
+      { wch: 12 }, // Ngày
+      { wch: 8 },  // Loại
+      { wch: 20 }, // Người
+      { wch: 20 }, // Khách hàng
+      { wch: 15 }, // Danh mục
+      { wch: 15 }, // Số tiền
+      { wch: 30 }  // Ghi chú
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Nhật ký');
+    XLSX.writeFile(wb, fileName);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 pb-20">
       {/* Header */}
       <div className="bg-white shadow-md">
         <div className="max-w-screen-lg mx-auto px-4 py-4">
-          <Logo />
+          <div className="flex items-center justify-between">
+            <Logo />
+            <button
+              onClick={handleExportExcel}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-semibold shadow-lg"
+              title="Xuất Excel"
+            >
+              <FileSpreadsheet size={18} />
+              <span>Excel</span>
+            </button>
+          </div>
           <h2 className="text-2xl font-bold text-center text-gray-800 mt-2">
             📋 Nhật ký Thu Chi
           </h2>
@@ -152,6 +210,14 @@ export default function HistoryScreen() {
                         <User size={14} className="text-gray-400" />
                         <span>{transaction.person}</span>
                       </div>
+
+                      {/* Tên khách hàng (chỉ hiển thị cho Thu) */}
+                      {transaction.type === 'income' && transaction.customerName && (
+                        <div className="flex items-center gap-2">
+                          <User size={14} className="text-gray-400" />
+                          <span className="text-green-600 font-medium">KH: {transaction.customerName}</span>
+                        </div>
+                      )}
 
                       {/* Danh mục */}
                       <div className="flex items-center gap-2">

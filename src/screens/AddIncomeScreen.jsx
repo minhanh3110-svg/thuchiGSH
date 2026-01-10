@@ -14,6 +14,7 @@ const AddIncomeScreen = () => {
 
   const [formData, setFormData] = useState({
     person: '',
+    customerName: '',
     amount: '',
     source: '',
     note: '',
@@ -61,6 +62,7 @@ const AddIncomeScreen = () => {
     if (editMode && existingTransaction) {
       setFormData({
         person: existingTransaction.person || '',
+        customerName: existingTransaction.customerName || '',
         amount: existingTransaction.amount || '',
         source: existingTransaction.category || '',
         note: existingTransaction.note || '',
@@ -82,6 +84,7 @@ const AddIncomeScreen = () => {
         // Update existing transaction
         updateTransaction(existingTransaction.id, {
           person: formData.person,
+          customerName: formData.customerName,
           amount: parseFloat(formData.amount),
           category: formData.source,
           note: formData.note,
@@ -169,6 +172,22 @@ const AddIncomeScreen = () => {
                 className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none"
                 required
                 autoComplete="name"
+              />
+            </div>
+
+            {/* Tên khách hàng */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1.5 uppercase tracking-wide">
+                Tên khách hàng
+              </label>
+              <input
+                type="text"
+                name="customerName"
+                value={formData.customerName}
+                onChange={handleChange}
+                placeholder="VD: Công ty ABC, Anh/Chị XYZ..."
+                className="w-full px-4 py-3 text-base border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all outline-none"
+                autoComplete="organization"
               />
             </div>
 

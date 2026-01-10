@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, ChevronDown, Download } from 'lucide-react';
+import { ArrowLeft, ChevronDown, Download, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import StatCard from '../components/StatCard';
 import Dashboard from '../components/Dashboard';
 import Logo from '../components/Logo';
@@ -12,7 +13,7 @@ import {
   getAllTimeStats,
   getAllTimeExpenseByCategory
 } from '../services/storage';
-import { formatCurrency, parseMonthString } from '../utils/formatters';
+import { formatCurrency, parseMonthString, formatDate } from '../utils/formatters';
 
 const ReportScreen = () => {
   const currentDate = new Date();
@@ -82,8 +83,83 @@ const ReportScreen = () => {
     return `Tháng ${month}/${year}`;
   };
 
-  // Export data as JSON
-  const handleExportData = () => {
+  // Export data as Excel
+  const handleExportExcel = () => {
+    const period = reportType === 'all' ? 'Tất cả thời gian' : formatMonthDisplay(selectedMonth);
+    const fileName = `Bao-Cao-Thu-Chi-${reportType === 'all' ? 'Tat-Ca' : selectedMonth}.xlsx`;
+
+    // Sheet 1: Tổng quan
+    const summaryData = [
+      ['BÁO CÁO THU CHI'],
+      ['Thời gian:', period],
+      ['Ngày xuất:', new Date().toLocaleString('vi-VN')],
+      [],
+      ['TỔNG QUAN'],
+      ['Tổng Thu:', stats.totalIncome],
+      ['Tổng Chi:', stats.totalExpense],
+      ['Số dư:', stats.balance],
+    ];
+
+    // Sheet 2: Chi tiết giao dịch
+    const transactionData = [
+      ['CHI TIẾT GIAO DỊCH'],
+      [],
+      ['Ngày', 'Loại', 'Người', 'Khách hàng', 'Danh mục', 'Số tiền', 'Ghi chú']
+    ];
+
+    transactions.forEach(t => {
+      transactionData.push([
+        formatDate(t.date),
+        t.type === 'income' ? 'Thu' : 'Chi',
+        t.person || '',
+        t.customerName || '',
+        t.category || '',
+        t.amount,
+        t.note || ''
+      ]);
+    });
+
+    // Sheet 3: Thống kê theo danh mục
+    const categoryData = [
+      ['THỐNG KÊ CHI THEO DANH MỤC'],
+      [],
+      ['Danh mục', 'Số tiền', 'Phần trăm']
+    ];
+
+    const totalExpense = stats.totalExpense || 1;
+    categoryStats.forEach(cat => {
+      const percentage = ((cat.amount / totalExpense) * 100).toFixed(1);
+      categoryData.push([
+        cat.category,
+        cat.amount,
+        percentage + '%'
+      ]);
+    });
+
+    // Tạo workbook
+    const wb = XLSX.utils.book_new();
+
+    // Thêm sheet tổng quan
+    const ws1 = XLSX.utils.aoa_to_sheet(summaryData);
+    ws1['!cols'] = [{ wch: 20 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Tổng quan');
+
+    // Thêm sheet chi tiết
+    const ws2 = XLSX.utils.aoa_to_sheet(transactionData);
+    ws2['!cols'] = [{ wch: 12 }, { wch: 8 }, { wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Chi tiết');
+
+    // Thêm sheet thống kê
+    const ws3 = XLSX.utils.aoa_to_sheet(categoryData);
+    ws3['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 10 }];
+    XLSX.utils.book_append_sheet(wb, ws3, 'Thống kê');
+
+    // Download file
+    XLSX.writeFile(wb, fileName);
+  };
+
+  // Export data as JSON (keep old function for backup)
+  const handleExportJSON = () => {
     const dataToExport = {
       exportDate: new Date().toISOString(),
       reportType: reportType,
@@ -110,14 +186,24 @@ const ReportScreen = () => {
         <div className="max-w-screen-lg mx-auto">
           <div className="flex items-center justify-between mb-3">
             <Logo size="md" />
-            <button
-              onClick={handleExportData}
-              className="flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold"
-              title="Tải xuống dữ liệu"
-            >
-              <Download size={16} />
-              <span className="hidden sm:inline">Tải xuống</span>
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleExportExcel}
+                className="flex items-center gap-1 text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold shadow-lg"
+                title="Xuất Excel"
+              >
+                <FileSpreadsheet size={16} />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+              <button
+                onClick={handleExportJSON}
+                className="flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold"
+                title="Tải JSON"
+              >
+                <Download size={16} />
+                <span className="hidden sm:inline">JSON</span>
+              </button>
+            </div>
           </div>
           
           <h1 className="text-xl font-bold mb-3">📊 Báo Cáo Thu Chi</h1>
