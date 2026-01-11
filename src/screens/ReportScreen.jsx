@@ -3,6 +3,8 @@ import { ArrowLeft, ChevronDown, Download, FileSpreadsheet } from 'lucide-react'
 import * as XLSX from 'xlsx';
 import StatCard from '../components/StatCard';
 import Dashboard from '../components/Dashboard';
+import IncomeDashboard from '../components/IncomeDashboard';
+import ExpenseDashboard from '../components/ExpenseDashboard';
 import Logo from '../components/Logo';
 import { 
   getTransactionsByMonth, 
@@ -11,7 +13,11 @@ import {
   getAvailableMonths,
   getAllTransactions,
   getAllTimeStats,
-  getAllTimeExpenseByCategory
+  getAllTimeExpenseByCategory,
+  getIncomeByCustomer,
+  getIncomeBySource,
+  getAllTimeIncomeByCustomer,
+  getAllTimeIncomeBySource
 } from '../services/storage';
 import { formatCurrency, parseMonthString, formatDate } from '../utils/formatters';
 
@@ -24,6 +30,8 @@ const ReportScreen = () => {
   const [selectedMonth, setSelectedMonth] = useState(`${currentYear}-${String(currentMonth).padStart(2, '0')}`);
   const [stats, setStats] = useState({ totalIncome: 0, totalExpense: 0, balance: 0 });
   const [categoryStats, setCategoryStats] = useState([]);
+  const [incomeByCustomer, setIncomeByCustomer] = useState([]);
+  const [incomeBySource, setIncomeBySource] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [availableMonths, setAvailableMonths] = useState([]);
 
@@ -70,6 +78,12 @@ const ReportScreen = () => {
 
       const allCategoryStats = getAllTimeExpenseByCategory();
       setCategoryStats(allCategoryStats);
+
+      const allIncomeByCustomer = getAllTimeIncomeByCustomer();
+      setIncomeByCustomer(allIncomeByCustomer);
+
+      const allIncomeBySource = getAllTimeIncomeBySource();
+      setIncomeBySource(allIncomeBySource);
     } else {
       // Load monthly data
       const { year, month } = parseMonthString(selectedMonth);
@@ -82,6 +96,12 @@ const ReportScreen = () => {
 
       const catStats = getExpenseByCategory(year, month);
       setCategoryStats(catStats);
+
+      const monthIncomeByCustomer = getIncomeByCustomer(year, month);
+      setIncomeByCustomer(monthIncomeByCustomer);
+
+      const monthIncomeBySource = getIncomeBySource(year, month);
+      setIncomeBySource(monthIncomeBySource);
     }
   };
 
@@ -301,46 +321,21 @@ const ReportScreen = () => {
           />
         </div>
 
-        {/* Dashboard with % Charts */}
+        {/* Overall Dashboard */}
         <Dashboard stats={stats} />
 
-        {/* Category Breakdown */}
-        {categoryStats.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-xl p-5 mb-6 border-2 border-purple-100">
-            <h2 className="text-base font-bold text-gray-800 mb-4">
-              Chi tiêu theo danh mục
-            </h2>
-            <div className="space-y-3">
-              {categoryStats.map((cat, index) => {
-                const percentage = stats.totalExpense > 0 
-                  ? ((cat.total / stats.totalExpense) * 100).toFixed(1)
-                  : 0;
-                
-                return (
-                  <div key={index}>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-xs font-semibold text-gray-700">
-                        {cat.category}
-                      </span>
-                      <span className="text-xs font-bold text-gray-900">
-                        {formatCurrency(cat.total)}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {percentage}% của tổng chi
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Income Dashboard - Phân loại Thu */}
+        <IncomeDashboard 
+          totalIncome={stats.totalIncome}
+          customerStats={incomeByCustomer}
+          sourceStats={incomeBySource}
+        />
+
+        {/* Expense Dashboard - Phân loại Chi */}
+        <ExpenseDashboard 
+          totalExpense={stats.totalExpense}
+          categoryStats={categoryStats}
+        />
 
         {/* Transaction Summary */}
         <div className="bg-white rounded-2xl shadow-xl p-5 border-2 border-purple-100">

@@ -358,3 +358,87 @@ export const getAllTimeExpenseByCategory = () => {
     return [];
   }
 };
+
+// Get income by customer (for monthly report)
+export const getIncomeByCustomer = (year, month) => {
+  try {
+    const transactions = getTransactionsByMonth(year, month);
+    const incomes = transactions.filter(t => t.type === 'income');
+    
+    const customerTotals = {};
+    incomes.forEach(income => {
+      const customer = income.customerName || 'Không có tên';
+      customerTotals[customer] = (customerTotals[customer] || 0) + parseFloat(income.amount);
+    });
+    
+    return Object.entries(customerTotals)
+      .map(([customer, total]) => ({ customer, total }))
+      .sort((a, b) => b.total - a.total);
+  } catch (error) {
+    console.error('Error getting income by customer:', error);
+    return [];
+  }
+};
+
+// Get income by source (for monthly report)
+export const getIncomeBySource = (year, month) => {
+  try {
+    const transactions = getTransactionsByMonth(year, month);
+    const incomes = transactions.filter(t => t.type === 'income');
+    
+    const sourceTotals = {};
+    incomes.forEach(income => {
+      const source = income.category || income.source || 'Khác';
+      sourceTotals[source] = (sourceTotals[source] || 0) + parseFloat(income.amount);
+    });
+    
+    return Object.entries(sourceTotals)
+      .map(([source, total]) => ({ source, total }))
+      .sort((a, b) => b.total - a.total);
+  } catch (error) {
+    console.error('Error getting income by source:', error);
+    return [];
+  }
+};
+
+// Get all time income by customer
+export const getAllTimeIncomeByCustomer = () => {
+  try {
+    const transactions = getAllTransactions();
+    const incomes = transactions.filter(t => t.type === 'income');
+    
+    const customerTotals = {};
+    incomes.forEach(income => {
+      const customer = income.customerName || 'Không có tên';
+      customerTotals[customer] = (customerTotals[customer] || 0) + parseFloat(income.amount);
+    });
+    
+    return Object.entries(customerTotals)
+      .map(([customer, total]) => ({ customer, total }))
+      .sort((a, b) => b.total - a.total);
+  } catch (error) {
+    console.error('Error getting all time income by customer:', error);
+    return [];
+  }
+};
+
+// Get all time income by source
+export const getAllTimeIncomeBySource = () => {
+  try {
+    const transactions = getAllTransactions();
+    const incomes = transactions.filter(t => t.type === 'income');
+    
+    const sourceTotals = {};
+    incomes.forEach(income => {
+      const source = income.category || income.source || 'Khác';
+      sourceTotals[source] = (sourceTotals[source] || 0) + parseFloat(income.amount);
+    });
+    
+    return Object.entries(sourceTotals)
+      .map(([source, total]) => ({ source, total }))
+      .sort((a, b) => b.total - a.total);
+  } catch (error) {
+    console.error('Error getting all time income by source:', error);
+    return [];
+  }
+};
