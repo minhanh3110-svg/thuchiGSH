@@ -360,6 +360,27 @@ export default function SettingsScreen() {
         alert(`✅ Đã gộp dữ liệu!\nĐã có: ${currentTransactions.length}\nThêm mới: ${newItems.length}\nTổng: ${newTransactions.length}`);
       }
 
+      // Nếu đang dùng Firebase, sync lên Firebase ngay
+      const authMode = localStorage.getItem('authMode');
+      if (authMode === 'firebase') {
+        console.log('☁️ Firebase mode detected - syncing imported data to Firebase...');
+        try {
+          let syncCount = 0;
+          // Sync từng transaction lên Firebase
+          for (const transaction of newTransactions) {
+            const result = await syncTransactionToFirebase(transaction);
+            if (result.success) {
+              syncCount++;
+            }
+          }
+          console.log(`✅ Synced ${syncCount}/${newTransactions.length} transactions to Firebase`);
+          alert(`✅ Đã import và sync ${syncCount}/${newTransactions.length} giao dịch lên Cloud!`);
+        } catch (error) {
+          console.error('❌ Error syncing to Firebase:', error);
+          alert(`⚠️ Đã import nhưng có lỗi khi sync lên Cloud:\n${error.message}\n\nDữ liệu vẫn được lưu local.`);
+        }
+      }
+
       // Dispatch events để các component khác reload
       console.log('📢 Dispatching storage and import events...');
       window.dispatchEvent(new Event('storage'));
@@ -368,7 +389,7 @@ export default function SettingsScreen() {
       // Small delay to ensure events are processed, then reload
       setTimeout(() => {
         window.location.reload();
-      }, 100);
+      }, 500);
     } catch (error) {
       alert('❌ Lỗi khi nhập dữ liệu: ' + error.message);
       console.error('Import error:', error);
