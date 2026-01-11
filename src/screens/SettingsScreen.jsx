@@ -130,27 +130,33 @@ export default function SettingsScreen() {
           
           // Tìm dòng header (có chứa "Ngày", "Loại", "Số tiền"...)
           let headerRowIndex = -1;
-          for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+          for (let i = 0; i < Math.min(20, jsonData.length); i++) {
             const row = jsonData[i];
-            if (Array.isArray(row) && row.some(cell => 
-              String(cell).toLowerCase().includes('ngày') || 
-              String(cell).toLowerCase().includes('loại') ||
-              String(cell).toLowerCase().includes('số tiền')
-            )) {
+            if (Array.isArray(row) && row.some(cell => {
+              if (!cell) return false;
+              const cellStr = String(cell).toLowerCase().trim();
+              return cellStr.includes('ngày') || 
+                     cellStr.includes('date') ||
+                     cellStr.includes('loại') ||
+                     cellStr.includes('type') ||
+                     cellStr.includes('số tiền') ||
+                     cellStr.includes('amount') ||
+                     cellStr.includes('tiền');
+            })) {
               headerRowIndex = i;
               break;
             }
           }
           
           if (headerRowIndex === -1) {
-            throw new Error('Không tìm thấy header trong file Excel!');
+            throw new Error('Không tìm thấy header trong file Excel! Vui lòng đảm bảo file có cột "Ngày" hoặc "Số tiền".');
           }
           
           // Map headers safely, filter out undefined/null
           const headers = jsonData[headerRowIndex]
             .map(h => {
               if (h === null || h === undefined) return '';
-              return String(h).toLowerCase().trim();
+              return String(h).toLowerCase().trim().replace(/\s+/g, ' '); // Normalize spaces
             })
             .filter(h => h !== '');
           
@@ -158,20 +164,37 @@ export default function SettingsScreen() {
             throw new Error('Header rỗng hoặc không hợp lệ!');
           }
           
+          // Helper function to find header index with flexible matching
+          const findHeaderIndex = (keywords) => {
+            return headers.findIndex(h => {
+              if (!h) return false;
+              const normalizedH = h.replace(/\s+/g, ''); // Remove all spaces for comparison
+              return keywords.some(keyword => {
+                const normalizedKeyword = keyword.replace(/\s+/g, '');
+                return normalizedH.includes(normalizedKeyword) || normalizedKeyword.includes(normalizedH);
+              });
+            });
+          };
+          
           const transactions = [];
           
-          // Map header indices - safely check includes
-          const dateIndex = headers.findIndex(h => h && (h.includes('ngày') || h.includes('date')));
-          const typeIndex = headers.findIndex(h => h && (h.includes('loại') || h.includes('type')));
-          const personIndex = headers.findIndex(h => h && (h.includes('người') || h.includes('person')));
-          const customerIndex = headers.findIndex(h => h && (h.includes('khách') || h.includes('customer')));
-          const categoryIndex = headers.findIndex(h => h && (h.includes('danh mục') || h.includes('category')));
-          const amountIndex = headers.findIndex(h => h && (h.includes('số tiền') || h.includes('amount') || h.includes('tiền')));
-          const noteIndex = headers.findIndex(h => h && (h.includes('ghi chú') || h.includes('note') || h.includes('mô tả')));
+          // Map header indices - flexible matching (không phân biệt hoa/thường, bỏ qua khoảng trắng)
+          const dateIndex = findHeaderIndex(['ngày', 'date', 'thời gian', 'datetime', 'ngay']);
+          const typeIndex = findHeaderIndex(['loại', 'type', 'kind', 'loai']);
+          const personIndex = findHeaderIndex(['người', 'person', 'nguoi', 'tên người', 'ten nguoi']);
+          const customerIndex = findHeaderIndex(['khách', 'customer', 'khach', 'khách hàng', 'khach hang', 'client']);
+          const categoryIndex = findHeaderIndex(['danh mục', 'category', 'danh muc', 'mục', 'muc']);
+          const amountIndex = findHeaderIndex(['số tiền', 'amount', 'so tien', 'tiền', 'tien', 'số tiền (vnđ)', 'giá trị', 'gia tri', 'money', 'value']);
+          const noteIndex = findHeaderIndex(['ghi chú', 'note', 'ghi chu', 'mô tả', 'mo ta', 'description', 'memo', 'comment']);
           
-          // Validate required fields
+          // Debug: Log found headers
+          console.log('📊 Headers found:', headers);
+          console.log('📊 Indices:', { dateIndex, typeIndex, amountIndex, personIndex, customerIndex, categoryIndex, noteIndex });
+          
+          // Validate required fields - at least need amount OR date
           if (dateIndex === -1 && amountIndex === -1) {
-            throw new Error('Không tìm thấy cột "Ngày" hoặc "Số tiền" trong file!');
+            const headerList = headers.join(', ');
+            throw new Error(`Không tìm thấy cột "Ngày" hoặc "Số tiền" trong file!\n\nCác cột tìm thấy: ${headerList}\n\nVui lòng đảm bảo file có ít nhất một trong các cột:\n- Ngày / Date\n- Số tiền / Amount / Tiền`);
           }
           
           // Parse rows
