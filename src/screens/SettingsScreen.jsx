@@ -360,8 +360,15 @@ export default function SettingsScreen() {
         alert(`✅ Đã gộp dữ liệu!\nĐã có: ${currentTransactions.length}\nThêm mới: ${newItems.length}\nTổng: ${newTransactions.length}`);
       }
 
-      // Reload page để cập nhật
-      window.location.reload();
+      // Dispatch events để các component khác reload
+      console.log('📢 Dispatching storage and import events...');
+      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new CustomEvent('data-imported', { detail: { count: newTransactions.length } }));
+      
+      // Small delay to ensure events are processed, then reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     } catch (error) {
       alert('❌ Lỗi khi nhập dữ liệu: ' + error.message);
       console.error('Import error:', error);
