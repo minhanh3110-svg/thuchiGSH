@@ -146,76 +146,114 @@ export default function SettingsScreen() {
             throw new Error('Không tìm thấy header trong file Excel!');
           }
           
-          const headers = jsonData[headerRowIndex].map(h => String(h).toLowerCase().trim());
+          // Map headers safely, filter out undefined/null
+          const headers = jsonData[headerRowIndex]
+            .map(h => {
+              if (h === null || h === undefined) return '';
+              return String(h).toLowerCase().trim();
+            })
+            .filter(h => h !== '');
+          
+          if (headers.length === 0) {
+            throw new Error('Header rỗng hoặc không hợp lệ!');
+          }
+          
           const transactions = [];
           
-          // Map header indices
-          const dateIndex = headers.findIndex(h => h.includes('ngày') || h.includes('date'));
-          const typeIndex = headers.findIndex(h => h.includes('loại') || h.includes('type'));
-          const personIndex = headers.findIndex(h => h.includes('người') || h.includes('person'));
-          const customerIndex = headers.findIndex(h => h.includes('khách') || h.includes('customer'));
-          const categoryIndex = headers.findIndex(h => h.includes('danh mục') || h.includes('category'));
-          const amountIndex = headers.findIndex(h => h.includes('số tiền') || h.includes('amount') || h.includes('tiền'));
-          const noteIndex = headers.findIndex(h => h.includes('ghi chú') || h.includes('note') || h.includes('mô tả'));
+          // Map header indices - safely check includes
+          const dateIndex = headers.findIndex(h => h && (h.includes('ngày') || h.includes('date')));
+          const typeIndex = headers.findIndex(h => h && (h.includes('loại') || h.includes('type')));
+          const personIndex = headers.findIndex(h => h && (h.includes('người') || h.includes('person')));
+          const customerIndex = headers.findIndex(h => h && (h.includes('khách') || h.includes('customer')));
+          const categoryIndex = headers.findIndex(h => h && (h.includes('danh mục') || h.includes('category')));
+          const amountIndex = headers.findIndex(h => h && (h.includes('số tiền') || h.includes('amount') || h.includes('tiền')));
+          const noteIndex = headers.findIndex(h => h && (h.includes('ghi chú') || h.includes('note') || h.includes('mô tả')));
+          
+          // Validate required fields
+          if (dateIndex === -1 && amountIndex === -1) {
+            throw new Error('Không tìm thấy cột "Ngày" hoặc "Số tiền" trong file!');
+          }
           
           // Parse rows
           for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
             const row = jsonData[i];
-            if (!row || row.length === 0) continue;
+            if (!row || !Array.isArray(row) || row.length === 0) continue;
             
             // Skip empty rows
-            if (row.every(cell => !cell || String(cell).trim() === '')) continue;
+            if (row.every(cell => cell === null || cell === undefined || String(cell).trim() === '')) continue;
             
             // Parse date
-            let dateValue = dateIndex >= 0 ? row[dateIndex] : null;
-            let date = new Date().toISOString().split('T')[0];
-            
-            if (dateValue) {
-              if (typeof dateValue === 'number') {
-                // Excel date serial number
-                const excelEpoch = new Date(1899, 11, 30);
-                date = new Date(excelEpoch.getTime() + dateValue * 86400000);
-                date = date.toISOString().split('T')[0];
-              } else if (typeof dateValue === 'string') {
-                // Try to parse string date
-                const parsed = new Date(dateValue);
-                if (!isNaN(parsed.getTime())) {
-                  date = parsed.toISOString().split('T')[0];
+            let date = new Date().toISOString().split('T')[0]; // default to today
+            if (dateIndex >= 0 && row[dateIndex] !== undefined && row[dateIndex] !== null) {
+              const dateValue = row[dateIndex];
+              try {
+                if (typeof dateValue === 'number') {
+                  // Excel date serial number
+                  const excelEpoch = new Date(1899, 11, 30);
+                  const parsedDate = new Date(excelEpoch.getTime() + dateValue * 86400000);
+                  if (!isNaN(parsedDate.getTime())) {
+                    date = parsedDate.toISOString().split('T')[0];
+                  }
+                } else if (typeof dateValue === 'string' && dateValue.trim() !== '') {
+                  // Try to parse string date
+                  const parsed = new Date(dateValue);
+                  if (!isNaN(parsed.getTime())) {
+                    date = parsed.toISOString().split('T')[0];
+                  }
+                } else if (dateValue instanceof Date) {
+                  date = dateValue.toISOString().split('T')[0];
                 }
-              } else if (dateValue instanceof Date) {
-                date = dateValue.toISOString().split('T')[0];
+              } catch (e) {
+                // Keep default date if parsing fails
+                console.warn('Date parsing error:', e);
               }
             }
             
             // Parse type
-            const typeValue = typeIndex >= 0 ? String(row[typeIndex] || '').toLowerCase() : '';
-            const type = typeValue.includes('thu') || typeValue.includes('income') ? 'income' : 'expense';
+            let type = 'expense'; // default
+            if (typeIndex >= 0 && row[typeIndex] !== undefined && row[typeIndex] !== null) {
+              const typeValue = String(row[typeIndex] || '').toLowerCase();
+              if (typeValue.includes('thu') || typeValue.includes('income')) {
+                type = 'income';
+              }
+            }
             
             // Parse amount
             let amount = 0;
             if (amountIndex >= 0 && row[amountIndex] !== undefined && row[amountIndex] !== null) {
-              const amountValue = row[amountIndex];
-              if (typeof amountValue === 'number') {
-                amount = Math.abs(amountValue);
-              } else if (typeof amountValue === 'string') {
-                // Remove commas, spaces, currency symbols
-                const cleaned = amountValue.replace(/[,\s₫$]/g, '');
-                amount = Math.abs(parseFloat(cleaned) || 0);
+              try {
+                const amountValue = row[amountIndex];
+                if (typeof amountValue === 'number') {
+                  amount = Math.abs(amountValue);
+                } else if (typeof amountValue === 'string' && amountValue.trim() !== '') {
+                  // Remove commas, spaces, currency symbols
+                  const cleaned = amountValue.replace(/[,\s₫$]/g, '');
+                  const parsed = parseFloat(cleaned);
+                  if (!isNaN(parsed)) {
+                    amount = Math.abs(parsed);
+                  }
+                }
+              } catch (e) {
+                console.warn('Amount parsing error:', e);
               }
             }
             
             // Skip if no amount
-            if (amount === 0) continue;
+            if (amount === 0 || isNaN(amount)) continue;
             
             const transaction = {
               id: `import_${Date.now()}_${i}`,
               type,
               date,
               amount,
-              person: personIndex >= 0 ? String(row[personIndex] || '').trim() : '',
-              customerName: customerIndex >= 0 ? String(row[customerIndex] || '').trim() : '',
-              category: categoryIndex >= 0 ? String(row[categoryIndex] || '').trim() : '',
-              note: noteIndex >= 0 ? String(row[noteIndex] || '').trim() : '',
+              person: personIndex >= 0 && row[personIndex] !== undefined && row[personIndex] !== null 
+                ? String(row[personIndex]).trim() : '',
+              customerName: customerIndex >= 0 && row[customerIndex] !== undefined && row[customerIndex] !== null 
+                ? String(row[customerIndex]).trim() : '',
+              category: categoryIndex >= 0 && row[categoryIndex] !== undefined && row[categoryIndex] !== null 
+                ? String(row[categoryIndex]).trim() : '',
+              note: noteIndex >= 0 && row[noteIndex] !== undefined && row[noteIndex] !== null 
+                ? String(row[noteIndex]).trim() : '',
             };
             
             transactions.push(transaction);
