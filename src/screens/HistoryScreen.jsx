@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
 import { getAllTransactions, deleteTransaction } from '../services/storage';
+import { deleteTransactionFromFirebase } from '../services/firebase';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 export default function HistoryScreen() {
@@ -54,6 +55,44 @@ export default function HistoryScreen() {
     if (confirm('Bạn có chắc muốn xóa giao dịch này?')) {
       deleteTransaction(id);
       loadTransactions();
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!confirm('⚠️ XÓA TOÀN BỘ GIAO DỊCH?\n\nHành động này không thể hoàn tác!')) return;
+    if (!confirm('🔴 XÁC NHẬN LẦN CUỐI: Bạn chắc chắn muốn xóa hết?')) return;
+
+    const allTransactions = getAllTransactions();
+    if (allTransactions.length === 0) {
+      alert('⚠️ Không có dữ liệu để xóa!');
+      return;
+    }
+
+    const authMode = localStorage.getItem('authMode');
+    try {
+      // Xóa trên Firebase nếu đang ở chế độ Cloud
+      if (authMode === 'firebase') {
+        let success = 0;
+        for (const t of allTransactions) {
+          try {
+            const result = await deleteTransactionFromFirebase(String(t.id));
+            if (result.success) success++;
+          } catch (err) {
+            console.error('Delete Firebase error:', err);
+          }
+        }
+        console.log(`🗑️ Deleted on Firebase: ${success}/${allTransactions.length}`);
+      }
+
+      // Xóa local
+      localStorage.removeItem('quanlythuchi_transactions');
+      window.dispatchEvent(new Event('storage'));
+      loadTransactions();
+
+      alert('✅ Đã xóa toàn bộ dữ liệu giao dịch!');
+    } catch (error) {
+      console.error('Error deleting all:', error);
+      alert('❌ Lỗi khi xóa toàn bộ dữ liệu: ' + error.message);
     }
   };
 
@@ -180,9 +219,19 @@ export default function HistoryScreen() {
 
           {/* Thống kê */}
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600 text-center">
-              Tổng số giao dịch: <span className="font-bold text-purple-600">{transactions.length}</span>
-            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p className="text-sm text-gray-600 text-center sm:text-left">
+                Tổng số giao dịch: <span className="font-bold text-purple-600">{transactions.length}</span>
+              </p>
+              <button
+                onClick={handleDeleteAll}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-md"
+                title="Xóa toàn bộ dữ liệu"
+              >
+                <Trash2 size={16} />
+                <span>Xóa toàn bộ</span>
+              </button>
+            </div>
           </div>
         </div>
 
