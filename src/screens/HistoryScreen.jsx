@@ -3,7 +3,7 @@ import { Trash2, Calendar, User, DollarSign, Tag, Edit, FileSpreadsheet } from '
 import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
-import { getAllTransactions, deleteTransaction } from '../services/storage';
+import { getAllTransactions, deleteTransaction, getAvailableMonths } from '../services/storage';
 import { deleteTransactionFromFirebase } from '../services/firebase';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
@@ -11,10 +11,13 @@ export default function HistoryScreen() {
   const [transactions, setTransactions] = useState([]);
   const [filter, setFilter] = useState('all'); // all, income, expense
   const [sortOrder, setSortOrder] = useState('desc'); // desc = mới nhất, asc = cũ nhất
+  const [availableMonths, setAvailableMonths] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState('all'); // 'all' or YYYY-MM
   const navigate = useNavigate();
 
   useEffect(() => {
     loadTransactions();
+    setAvailableMonths(getAvailableMonths());
     
     // Listen for Firebase sync events
     const handleSync = () => {
@@ -29,10 +32,15 @@ export default function HistoryScreen() {
       window.removeEventListener('firebase-sync', handleSync);
       window.removeEventListener('storage', handleSync);
     };
-  }, [filter, sortOrder]);
+  }, [filter, sortOrder, selectedMonth]);
 
   const loadTransactions = () => {
     let allTransactions = getAllTransactions();
+    
+    // Lọc theo tháng
+    if (selectedMonth !== 'all') {
+      allTransactions = allTransactions.filter(t => t.date.startsWith(selectedMonth));
+    }
     
     // Lọc theo loại
     if (filter === 'income') {
@@ -213,6 +221,25 @@ export default function HistoryScreen() {
               >
                 <option value="desc">Mới nhất</option>
                 <option value="asc">Cũ nhất</option>
+              </select>
+            </div>
+
+            {/* Lọc theo tháng */}
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Tháng
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="all">Tất cả</option>
+                {availableMonths.map(m => (
+                  <option key={m} value={m}>
+                    {`Tháng ${m.split('-')[1]}/${m.split('-')[0]}`}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
