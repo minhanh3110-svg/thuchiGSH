@@ -225,11 +225,21 @@ const ReportScreen = () => {
               <button
                 onClick={handleExportExcel}
                 className="flex items-center gap-1 text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold shadow-lg"
-                title="Xuất Excel"
+                title="Xuất Excel - Có thể upload lên Google Sheets"
               >
                 <FileSpreadsheet size={16} />
                 <span className="hidden sm:inline">Excel</span>
               </button>
+              <a
+                href="https://sheets.google.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-white bg-blue-600 hover:bg-blue-700 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold shadow-lg"
+                title="Mở Google Sheets"
+              >
+                <FileSpreadsheet size={16} />
+                <span className="hidden sm:inline">Sheets</span>
+              </a>
               <button
                 onClick={handleExportJSON}
                 className="flex items-center gap-1 text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors text-sm font-semibold"

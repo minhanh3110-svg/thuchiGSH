@@ -236,13 +236,27 @@ export default function SettingsScreen() {
               <p className="text-sm text-gray-600 mb-3">
                 Sao lưu toàn bộ dữ liệu ra file JSON. Dùng để chuyển sang máy khác hoặc backup.
               </p>
-              <button
-                onClick={handleExportData}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors shadow-lg"
-              >
-                <Download size={18} className="inline mr-2" />
-                Xuất toàn bộ dữ liệu
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={handleExportData}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-colors shadow-lg"
+                >
+                  <Download size={18} className="inline mr-2" />
+                  Xuất toàn bộ dữ liệu (JSON)
+                </button>
+                <a
+                  href="https://sheets.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition-colors shadow-lg flex items-center justify-center gap-2"
+                >
+                  <Database size={18} />
+                  Mở Google Sheets
+                </a>
+                <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+                  💡 <strong>Tip:</strong> Xuất Excel từ trang Báo cáo → Upload lên Google Sheets để xem và chỉnh sửa trực tiếp!
+                </div>
+              </div>
             </div>
           </div>
         </div>
