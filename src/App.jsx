@@ -120,13 +120,21 @@ function App() {
         
         console.log('📊 [App] Local data:', localData.length, '| Firebase data:', firebaseData.length);
         
-        // Create a map to avoid duplicates
-        const dataMap = new Map();
-        [...localData, ...firebaseData].forEach(t => {
-          dataMap.set(t.id, t);
+        // Firebase is source of truth - use Firebase data as base
+        // Only keep local transactions that don't exist in Firebase and are new (created within 30 seconds)
+        const firebaseIds = new Set(firebaseData.map(t => String(t.id)));
+        const now = Date.now();
+        const pendingLocal = localData.filter(t => {
+          const id = String(t.id);
+          if (firebaseIds.has(id)) return false; // Already in Firebase
+          
+          // Check if this is a new transaction (created within last 30 seconds)
+          const createdAt = t.createdAt ? new Date(t.createdAt).getTime() : t.id;
+          const ageInSeconds = (now - createdAt) / 1000;
+          return ageInSeconds < 30; // Only keep if created within last 30 seconds
         });
         
-        const mergedData = Array.from(dataMap.values());
+        const mergedData = [...firebaseData, ...pendingLocal];
         localStorage.setItem('quanlythuchi_transactions', JSON.stringify(mergedData));
         
         console.log('✅ [App] Synced! Total transactions:', mergedData.length);
@@ -154,14 +162,35 @@ function App() {
       const localData = JSON.parse(localStorage.getItem('quanlythuchi_transactions') || '[]');
       
       // Firebase is the source of truth - use Firebase data as base
-      // Only keep local transactions that don't exist in Firebase (pending sync)
       const firebaseIds = new Set(transactions.map(t => String(t.id)));
-      const pendingLocal = localData.filter(t => !firebaseIds.has(String(t.id)));
       
-      // Merge: Firebase data (source of truth) + pending local data
+      // Only keep local transactions that:
+      // 1. Don't exist in Firebase (pending sync)
+      // 2. Were created recently (within 30 seconds) - likely new transactions not yet synced
+      // This prevents keeping deleted transactions
+      const now = Date.now();
+      const pendingLocal = localData.filter(t => {
+        const id = String(t.id);
+        if (firebaseIds.has(id)) return false; // Already in Firebase
+        
+        // Check if this is a new transaction (created within last 30 seconds)
+        const createdAt = t.createdAt ? new Date(t.createdAt).getTime() : t.id; // Use id as timestamp if no createdAt
+        const ageInSeconds = (now - createdAt) / 1000;
+        
+        // Only keep if created within last 30 seconds (likely new, not yet synced)
+        if (ageInSeconds < 30) {
+          console.log('📝 [App] Keeping pending local transaction:', id, '(created', Math.round(ageInSeconds), 'seconds ago)');
+          return true;
+        } else {
+          console.log('🗑️ [App] Removing deleted transaction:', id, '(created', Math.round(ageInSeconds), 'seconds ago)');
+          return false;
+        }
+      });
+      
+      // Merge: Firebase data (source of truth) + only new pending local data
       const mergedData = [...transactions, ...pendingLocal];
       
-      console.log('📊 [App] Merge: Firebase:', transactions.length, '| Pending local:', pendingLocal.length, '| Total:', mergedData.length);
+      console.log('📊 [App] Merge: Firebase:', transactions.length, '| Pending local (new):', pendingLocal.length, '| Total:', mergedData.length);
       
       // Check if data actually changed (avoid infinite loops)
       const currentDataStr = JSON.stringify(
