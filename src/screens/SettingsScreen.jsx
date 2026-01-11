@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, Download, Database, AlertTriangle, RefreshCw } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Logo from '../components/Logo';
 import { getAllTransactions } from '../services/storage';
 import { getAllTransactionsFromFirebase, syncTransactionToFirebase } from '../services/firebase';
@@ -108,47 +109,205 @@ export default function SettingsScreen() {
     }
   };
 
+  // Parse Excel/CSV to transactions
+  const parseExcelToTransactions = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // Tìm sheet có dữ liệu giao dịch (thường là sheet "Chi tiết" hoặc sheet đầu tiên)
+          let sheetName = workbook.SheetNames.find(name => 
+            name.toLowerCase().includes('chi tiết') || 
+            name.toLowerCase().includes('nhật ký') ||
+            name.toLowerCase().includes('detail')
+          ) || workbook.SheetNames[0];
+          
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          // Tìm dòng header (có chứa "Ngày", "Loại", "Số tiền"...)
+          let headerRowIndex = -1;
+          for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+            const row = jsonData[i];
+            if (Array.isArray(row) && row.some(cell => 
+              String(cell).toLowerCase().includes('ngày') || 
+              String(cell).toLowerCase().includes('loại') ||
+              String(cell).toLowerCase().includes('số tiền')
+            )) {
+              headerRowIndex = i;
+              break;
+            }
+          }
+          
+          if (headerRowIndex === -1) {
+            throw new Error('Không tìm thấy header trong file Excel!');
+          }
+          
+          const headers = jsonData[headerRowIndex].map(h => String(h).toLowerCase().trim());
+          const transactions = [];
+          
+          // Map header indices
+          const dateIndex = headers.findIndex(h => h.includes('ngày') || h.includes('date'));
+          const typeIndex = headers.findIndex(h => h.includes('loại') || h.includes('type'));
+          const personIndex = headers.findIndex(h => h.includes('người') || h.includes('person'));
+          const customerIndex = headers.findIndex(h => h.includes('khách') || h.includes('customer'));
+          const categoryIndex = headers.findIndex(h => h.includes('danh mục') || h.includes('category'));
+          const amountIndex = headers.findIndex(h => h.includes('số tiền') || h.includes('amount') || h.includes('tiền'));
+          const noteIndex = headers.findIndex(h => h.includes('ghi chú') || h.includes('note') || h.includes('mô tả'));
+          
+          // Parse rows
+          for (let i = headerRowIndex + 1; i < jsonData.length; i++) {
+            const row = jsonData[i];
+            if (!row || row.length === 0) continue;
+            
+            // Skip empty rows
+            if (row.every(cell => !cell || String(cell).trim() === '')) continue;
+            
+            // Parse date
+            let dateValue = dateIndex >= 0 ? row[dateIndex] : null;
+            let date = new Date().toISOString().split('T')[0];
+            
+            if (dateValue) {
+              if (typeof dateValue === 'number') {
+                // Excel date serial number
+                const excelEpoch = new Date(1899, 11, 30);
+                date = new Date(excelEpoch.getTime() + dateValue * 86400000);
+                date = date.toISOString().split('T')[0];
+              } else if (typeof dateValue === 'string') {
+                // Try to parse string date
+                const parsed = new Date(dateValue);
+                if (!isNaN(parsed.getTime())) {
+                  date = parsed.toISOString().split('T')[0];
+                }
+              } else if (dateValue instanceof Date) {
+                date = dateValue.toISOString().split('T')[0];
+              }
+            }
+            
+            // Parse type
+            const typeValue = typeIndex >= 0 ? String(row[typeIndex] || '').toLowerCase() : '';
+            const type = typeValue.includes('thu') || typeValue.includes('income') ? 'income' : 'expense';
+            
+            // Parse amount
+            let amount = 0;
+            if (amountIndex >= 0 && row[amountIndex] !== undefined && row[amountIndex] !== null) {
+              const amountValue = row[amountIndex];
+              if (typeof amountValue === 'number') {
+                amount = Math.abs(amountValue);
+              } else if (typeof amountValue === 'string') {
+                // Remove commas, spaces, currency symbols
+                const cleaned = amountValue.replace(/[,\s₫$]/g, '');
+                amount = Math.abs(parseFloat(cleaned) || 0);
+              }
+            }
+            
+            // Skip if no amount
+            if (amount === 0) continue;
+            
+            const transaction = {
+              id: `import_${Date.now()}_${i}`,
+              type,
+              date,
+              amount,
+              person: personIndex >= 0 ? String(row[personIndex] || '').trim() : '',
+              customerName: customerIndex >= 0 ? String(row[customerIndex] || '').trim() : '',
+              category: categoryIndex >= 0 ? String(row[categoryIndex] || '').trim() : '',
+              note: noteIndex >= 0 ? String(row[noteIndex] || '').trim() : '',
+            };
+            
+            transactions.push(transaction);
+          }
+          
+          if (transactions.length === 0) {
+            throw new Error('Không tìm thấy giao dịch nào trong file!');
+          }
+          
+          resolve(transactions);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Lỗi đọc file!'));
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
   // Import dữ liệu từ file
-  const handleImportData = (event) => {
+  const handleImportData = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const importedData = JSON.parse(e.target?.result);
+    try {
+      let importedTransactions = [];
+      
+      // Check file type
+      const fileName = file.name.toLowerCase();
+      const isExcel = fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+      const isCSV = fileName.endsWith('.csv');
+      const isJSON = fileName.endsWith('.json');
+      
+      if (isExcel || isCSV) {
+        // Import from Excel/CSV
+        importedTransactions = await parseExcelToTransactions(file);
+      } else if (isJSON) {
+        // Import from JSON
+        const text = await file.text();
+        const importedData = JSON.parse(text);
         
         // Validate data
         if (!importedData.data || !Array.isArray(importedData.data)) {
-          throw new Error('File không đúng định dạng!');
+          throw new Error('File JSON không đúng định dạng! Cần có field "data" là array.');
         }
-
-        const currentTransactions = getAllTransactions();
-        let newTransactions = [];
-
-        if (importMode === 'replace') {
-          // Thay thế toàn bộ
-          newTransactions = importedData.data;
-          localStorage.setItem('quanlythuchi_transactions', JSON.stringify(newTransactions));
-          alert(`✅ Đã thay thế toàn bộ!\nNhập: ${importedData.data.length} giao dịch`);
-        } else {
-          // Merge (gộp, không trùng lặp)
-          const existingIds = new Set(currentTransactions.map(t => t.id));
-          const newItems = importedData.data.filter(t => !existingIds.has(t.id));
-          
-          newTransactions = [...currentTransactions, ...newItems];
-          localStorage.setItem('quanlythuchi_transactions', JSON.stringify(newTransactions));
-          
-          alert(`✅ Đã gộp dữ liệu!\nĐã có: ${currentTransactions.length}\nThêm mới: ${newItems.length}\nTổng: ${newTransactions.length}`);
-        }
-
-        // Reload page để cập nhật
-        window.location.reload();
-      } catch (error) {
-        alert('❌ Lỗi khi nhập dữ liệu: ' + error.message);
+        
+        importedTransactions = importedData.data;
+      } else {
+        throw new Error('File không được hỗ trợ! Chỉ chấp nhận .json, .xlsx, .xls, .csv');
       }
-    };
-    reader.readAsText(file);
+
+      if (importedTransactions.length === 0) {
+        throw new Error('Không có dữ liệu để nhập!');
+      }
+
+      const currentTransactions = getAllTransactions();
+      let newTransactions = [];
+
+      if (importMode === 'replace') {
+        // Thay thế toàn bộ
+        newTransactions = importedTransactions;
+        localStorage.setItem('quanlythuchi_transactions', JSON.stringify(newTransactions));
+        alert(`✅ Đã thay thế toàn bộ!\nNhập: ${importedTransactions.length} giao dịch`);
+      } else {
+        // Merge (gộp, không trùng lặp)
+        // Tạo map để tránh trùng lặp theo date + amount + type
+        const existingMap = new Map();
+        currentTransactions.forEach(t => {
+          const key = `${t.date}_${t.amount}_${t.type}`;
+          existingMap.set(key, true);
+        });
+        
+        const newItems = importedTransactions.filter(t => {
+          const key = `${t.date}_${t.amount}_${t.type}`;
+          return !existingMap.has(key);
+        });
+        
+        newTransactions = [...currentTransactions, ...newItems];
+        localStorage.setItem('quanlythuchi_transactions', JSON.stringify(newTransactions));
+        
+        alert(`✅ Đã gộp dữ liệu!\nĐã có: ${currentTransactions.length}\nThêm mới: ${newItems.length}\nTổng: ${newTransactions.length}`);
+      }
+
+      // Reload page để cập nhật
+      window.location.reload();
+    } catch (error) {
+      alert('❌ Lỗi khi nhập dữ liệu: ' + error.message);
+      console.error('Import error:', error);
+    }
+    
+    // Reset file input
+    event.target.value = '';
   };
 
   const handleClearData = () => {
@@ -270,7 +429,7 @@ export default function SettingsScreen() {
             <div className="flex-1">
               <h3 className="font-bold text-gray-800 mb-1">Nhập dữ liệu</h3>
               <p className="text-sm text-gray-600 mb-3">
-                Nhập file JSON đã xuất từ máy khác. Chọn chế độ gộp hoặc thay thế.
+                Nhập file JSON, Excel (.xlsx, .xls) hoặc CSV đã xuất từ máy khác hoặc Google Sheets. Chọn chế độ gộp hoặc thay thế.
               </p>
 
               {/* Import Mode */}
@@ -310,14 +469,17 @@ export default function SettingsScreen() {
 
               <label className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold transition-colors shadow-lg flex items-center justify-center cursor-pointer">
                 <Upload size={18} className="mr-2" />
-                Chọn file để nhập
+                Chọn file để nhập (JSON/Excel/CSV)
                 <input
                   type="file"
-                  accept=".json"
+                  accept=".json,.xlsx,.xls,.csv"
                   onChange={handleImportData}
                   className="hidden"
                 />
               </label>
+              <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+                💡 <strong>Hỗ trợ:</strong> JSON (từ app), Excel (.xlsx, .xls), CSV (từ Google Sheets)
+              </div>
             </div>
           </div>
         </div>
