@@ -175,6 +175,52 @@ export default function SettingsScreen() {
               });
             });
           };
+
+          const formatDateLocal = (d) => {
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+          };
+
+          const parseDateValue = (dateValue) => {
+            // Excel serial number
+            if (typeof dateValue === 'number') {
+              const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+              const parsedDate = new Date(excelEpoch.getTime() + dateValue * 86400000);
+              return formatDateLocal(parsedDate);
+            }
+
+            // If string, try common formats without timezone shift
+            if (typeof dateValue === 'string' && dateValue.trim() !== '') {
+              const str = dateValue.trim();
+              // dd/mm/yyyy or d/m/yyyy
+              const dm = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+              if (dm) {
+                const [_, d, m, y] = dm;
+                const parsedDate = new Date(Number(y), Number(m) - 1, Number(d));
+                return formatDateLocal(parsedDate);
+              }
+              // yyyy-mm-dd
+              const ym = str.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+              if (ym) {
+                const [_, y, m, d] = ym;
+                const parsedDate = new Date(Number(y), Number(m) - 1, Number(d));
+                return formatDateLocal(parsedDate);
+              }
+              const parsed = new Date(str);
+              if (!isNaN(parsed.getTime())) {
+                return formatDateLocal(parsed);
+              }
+            }
+
+            if (dateValue instanceof Date && !isNaN(dateValue.getTime())) {
+              return formatDateLocal(dateValue);
+            }
+
+            // fallback: today
+            return formatDateLocal(new Date());
+          };
           
           const transactions = [];
           
@@ -205,29 +251,12 @@ export default function SettingsScreen() {
             // Skip empty rows
             if (row.every(cell => cell === null || cell === undefined || String(cell).trim() === '')) continue;
             
-            // Parse date
-            let date = new Date().toISOString().split('T')[0]; // default to today
+            // Parse date (avoid timezone shift by formatting as local date)
+            let date = formatDateLocal(new Date()); // default to today
             if (dateIndex >= 0 && row[dateIndex] !== undefined && row[dateIndex] !== null) {
-              const dateValue = row[dateIndex];
               try {
-                if (typeof dateValue === 'number') {
-                  // Excel date serial number
-                  const excelEpoch = new Date(1899, 11, 30);
-                  const parsedDate = new Date(excelEpoch.getTime() + dateValue * 86400000);
-                  if (!isNaN(parsedDate.getTime())) {
-                    date = parsedDate.toISOString().split('T')[0];
-                  }
-                } else if (typeof dateValue === 'string' && dateValue.trim() !== '') {
-                  // Try to parse string date
-                  const parsed = new Date(dateValue);
-                  if (!isNaN(parsed.getTime())) {
-                    date = parsed.toISOString().split('T')[0];
-                  }
-                } else if (dateValue instanceof Date) {
-                  date = dateValue.toISOString().split('T')[0];
-                }
+                date = parseDateValue(row[dateIndex]);
               } catch (e) {
-                // Keep default date if parsing fails
                 console.warn('Date parsing error:', e);
               }
             }
